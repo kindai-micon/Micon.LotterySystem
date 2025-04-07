@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35818.85 d17.13
+VisualStudioVersion = 17.13.35818.85
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Micon.LotterySystem", "Micon.LotterySystem\Micon.LotterySystem.csproj", "{A9E1EE3E-DF55-492B-B57C-0B3A95373F60}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Micon.LotterySystem.AppHost", "Micon.LotterySystem.Aspire\Micon.LotterySystem.Aspire.AppHost\Micon.LotterySystem.AppHost.csproj", "{5E0101E7-2674-4D36-A892-1AAE261F812D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Micon.LotterySystem.ServiceDefaults", "Micon.LotterySystem.Aspire\Micon.LotterySystem.Aspire.ServiceDefaults\Micon.LotterySystem.ServiceDefaults.csproj", "{9BDC1B20-2810-1C27-60BD-521B7A356566}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{A9E1EE3E-DF55-492B-B57C-0B3A95373F60}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A9E1EE3E-DF55-492B-B57C-0B3A95373F60}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A9E1EE3E-DF55-492B-B57C-0B3A95373F60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E0101E7-2674-4D36-A892-1AAE261F812D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E0101E7-2674-4D36-A892-1AAE261F812D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E0101E7-2674-4D36-A892-1AAE261F812D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E0101E7-2674-4D36-A892-1AAE261F812D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BDC1B20-2810-1C27-60BD-521B7A356566}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BDC1B20-2810-1C27-60BD-521B7A356566}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BDC1B20-2810-1C27-60BD-521B7A356566}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BDC1B20-2810-1C27-60BD-521B7A356566}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
