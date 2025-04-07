@@ -7,11 +7,11 @@ namespace Micon.LotterySystem.Handler
     {
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, DynamicRoleRequirement requirement)
         {
-            var roles = dbContext.Authorities.Include(a => a.Role)
+            var authorities = dbContext.Authorities.Include(a => a.Role)
                 .ToList();
-            foreach(var role in roles)
+            foreach(var authority in authorities)
             {
-                if (context.User.IsInRole(role.Name))
+                if (context.User.IsInRole(authority.Role.Name))
                 {
 
                     context.Succeed(requirement);
