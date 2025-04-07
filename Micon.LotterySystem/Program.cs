@@ -51,6 +51,7 @@ namespace Micon.LotterySystem
             
             var app = builder.Build();
 
+
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
@@ -66,7 +67,12 @@ namespace Micon.LotterySystem
             app.MapControllers();
 
             app.MapFallbackToFile("index.html");
-
+            
+            using (var sp = app.Services.CreateScope())
+            {
+                var dbContext = sp.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                dbContext.Database.Migrate();
+            }
             app.Run();
         }
     }
