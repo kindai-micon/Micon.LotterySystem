@@ -26,6 +26,7 @@
 		<RemoveDir Directories="./wwwroot" />
 	</Target>
 	<ItemGroup>
+	  <TypeScriptCompile Include="micon.lotterysystem.client\src\lib\models\user.ts" />
 	  <TypeScriptCompile Include="micon.lotterysystem.client\src\store\UserStore.ts" />
 	</ItemGroup>
 	<ItemGroup>

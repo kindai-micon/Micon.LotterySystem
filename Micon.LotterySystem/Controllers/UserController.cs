@@ -24,12 +24,34 @@ namespace Micon.LotterySystem.Controllers
         ApplicationDbContext applicationDbContext,
         IPasscodeService passcodeService) : ControllerBase
     {
+        [HttpGet(nameof(MyInfo))]
+        public async Task<IActionResult> MyInfo()
+        {
+            
+            var user = await userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            SendUser sendUser = new SendUser(user);
+            var roleStrList = await userManager.GetRolesAsync(user);
+            sendUser.Roles =
+                await roleManager.Roles.Include(x => x.Authorities).Where(x => roleStrList.Contains(x.Name))
+                    .Select(r => new SendRole(r))
+                    .ToListAsync();
+            return Ok(sendUser);
+        }
+
+        [Authorize]
         [HttpGet(nameof(UserInfo))]
-        public async Task<IActionResult> UserInfo()
+        public async Task<IActionResult> UserInfo([FromQuery]string userName)
         {
 
-            var user = await userManager.GetUserAsync(User);
-
+            var user = await userManager.FindByNameAsync(userName);
+            if (user == null)
+            {
+                return NotFound();
+            }
             SendUser sendUser = new SendUser(user);
             var roleStrList = await userManager.GetRolesAsync(user);
             sendUser.Roles =
@@ -76,7 +98,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok(sendUser);
         }
 
-        [Authorize(Policy = "RegisterUser")]
+        [Authorize(Policy = "UserManagement")]
         [HttpPost(nameof(Register))]
         public async Task<IActionResult> Register([FromBody] RegisterModel registerModel)
         {
@@ -113,7 +135,8 @@ namespace Micon.LotterySystem.Controllers
             {
                 if(initialUser.Password != initialUser.ConfirmPassword)
                 {
-                    return BadRequest("The password is different");
+                    return BadRequest(new IdentityError[] { new IdentityError() { Code = "Passcode", Description = "Passcodeが異なります" } });
+
                 }
                 ApplicationUser applicationUser = new ApplicationUser();
                 applicationUser.UserName = initialUser.UserName;
@@ -121,16 +144,16 @@ namespace Micon.LotterySystem.Controllers
                 var result = await userManager.CreateAsync(applicationUser, initialUser.Password);
                 if(result.Succeeded == false)
                 {
-                    return BadRequest(result.Errors);
+                    return BadRequest(result.Errors.ToArray());
                 }
                 ApplicationRole applicationRole = new ApplicationRole("Admin");
                 result = await roleManager.CreateAsync(applicationRole );
                 if(result.Succeeded == false)
                 {
-                    return BadRequest(result.Errors);
+                    return BadRequest(result.Errors.ToArray());
                 }
                 var authority1 = applicationDbContext.Authorities.Add(new Authority() { Name = "RoleManagement" });
-                var authority2 = applicationDbContext.Authorities.Add(new Authority() { Name = "RegisterUser" });
+                var authority2 = applicationDbContext.Authorities.Add(new Authority() { Name = "UserManagement" });
 
                 applicationRole.Authorities.Add(authority1.Entity);
                 applicationRole.Authorities.Add(authority2.Entity);
@@ -138,13 +161,13 @@ namespace Micon.LotterySystem.Controllers
                 result = await userManager.AddToRoleAsync(applicationUser,applicationRole.Name);
                 if(result.Succeeded == false)
                 {
-                    return BadRequest(result.Errors);
+                    return BadRequest(result.Errors.ToArray());
                 }
                 return Ok();
             }
             else
             {
-                return BadRequest("The passcode is different");
+                return BadRequest(new IdentityError[] { new IdentityError() { Code = "Passcode", Description = "Passcodeが異なります" } });
             }
         }
         [HttpGet(nameof(HasUser))]
@@ -161,7 +184,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok();
         }
 
-        [Authorize]
+        [Authorize("UserManagement")]
         [HttpGet(nameof(UserList))]
         public async Task<IActionResult> UserList()
         {
@@ -179,7 +202,6 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok(sendUsers);
         }
-
         [Authorize(Policy = "RoleManagement")]
         [HttpPut(nameof(AddRole))]
         public async Task<IActionResult> AddRole([FromBody] UserRoleModel userRoleModel)

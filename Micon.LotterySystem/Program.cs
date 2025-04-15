@@ -32,12 +32,10 @@ namespace Micon.LotterySystem
             });
             builder.Services.AddAuthorization(options =>
             {
-                options.AddPolicy("RegisterUser", policy =>
-                    policy.Requirements.Add(new DynamicRoleRequirement("RegisterUser")));
                 options.AddPolicy("RoleManagement", policy =>
                     policy.Requirements.Add(new DynamicRoleRequirement("RoleManagement")));
-                options.AddPolicy("RegisterUser", policy =>
-                    policy.Requirements.Add(new DynamicRoleRequirement("RegisterUser")));
+                options.AddPolicy("UserManagement", policy =>
+                    policy.Requirements.Add(new DynamicRoleRequirement("UserManagement")));
 
             });
             builder.Services.AddAuthentication(option =>
@@ -55,6 +53,7 @@ namespace Micon.LotterySystem
                 .AddRoles<ApplicationRole>()
                 .AddUserManager<UserManager<ApplicationUser>>()
                 .AddSignInManager<SignInManager<ApplicationUser>>()
+                .AddErrorDescriber<JapaneseIdentityErrorDescriber>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             
             var app = builder.Build();

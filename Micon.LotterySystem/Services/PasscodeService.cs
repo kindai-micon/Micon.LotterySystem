@@ -29,6 +29,8 @@ namespace Micon.LotterySystem.Services
         }
         public async Task<bool> CheckPascodeAsync(string passcode)
         {
+            Console.WriteLine("passcode:" + Passcode);
+
             var usersCount = await userManager.Users.CountAsync();
             if(usersCount != 0)
             {
@@ -39,6 +41,8 @@ namespace Micon.LotterySystem.Services
         }
         public bool CheckPascode(string passcode)
         {
+            Console.WriteLine("passcode:" + Passcode);
+
             var usersCount = userManager.Users.Count();
             if (usersCount != 0)
             {

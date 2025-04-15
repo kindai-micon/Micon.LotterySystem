@@ -3,31 +3,33 @@
     import { page } from '$app/stores';
     import { goto } from "$app/navigation";
     import { user } from "../store/UserStore.ts";
+    import { loadUser } from "../store/UserStore.ts";
     import { onMount } from 'svelte';
     import type { User } from '../stores/UsetStore.ts';
     let { children } = $props();
     let currentUser: User | null = null;
-    
+
     let isLoginPath = $state(false);
     const menuItems = [
         { name: 'ユーザー管理', href: '/users' },
         { name: 'ロール管理', href: '/roles' },
-        { name: '抽選券管理', href: '/tickets' },
-        
+        { name: '抽選会', href: '/LotteryGroup' },
+
 
     ];
     const unsubscribe = user.subscribe(value => {
         currentUser = value;
     });
+    console.log(currentUser);
     onMount(async () => {
         if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial")) {
 
-            
+            await loadUser();
+            console.log(currentUser);
             if (currentUser === null) {
-                
+
                 await goto("/login")
                 isLoginPath = true;
-
             }
             else {
 
@@ -158,9 +160,11 @@
         .sidebar {
             display: none;
         }
-        .menu-button{
-            display:block;
+
+        .menu-button {
+            display: block;
         }
+
         .layout-body {
             flex-direction: column;
         }
@@ -189,7 +193,7 @@
         </nav>
     </div>
     {/if}
-    
+
 
     <!-- 本体 -->
     <div class="layout-body">

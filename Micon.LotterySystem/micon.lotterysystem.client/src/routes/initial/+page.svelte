@@ -20,43 +20,54 @@
             const data: bool = await response.json();
             console.log(data);
             if (data) {
-                await goto("/");
+                await goto("/login");
             }
         }
     })
     async function handleSubmit(): Promise<void> {
-        
-    error = '';
-    success = '';
 
-    if (password !== confirmPassword) {
-        error = 'パスワードが一致しません。';
-        return;
-    }
+        error = '';
+        success = '';
 
-    if (!passcode || !username || !password || !confirmPassword) {
-        error = 'すべての項目を入力してください。';
-        return;
-    }
+        if (password !== confirmPassword) {
+            error = 'パスワードが一致しません。';
+            return;
+        }
 
-    // ここでAPIに送信する処理を実装できます
-    // fetch('/api/create-initial-user', { method: 'POST', body: JSON.stringify(...) })
-    const response = await fetch('/api/user/InitialRegister', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            Passcode: passcode,
-            UserName: username,
-            Password: password,
-            ConfirmPassword: confirmPassword,
-            Email: email
-        }),
-    });
-    console.log(response);
-    success = 'ユーザーを作成しました。';
-        
+        if (!passcode || !username || !password || !confirmPassword) {
+            error = 'すべての項目を入力してください。';
+            return;
+        }
+
+        // ここでAPIに送信する処理を実装できます
+        // fetch('/api/create-initial-user', { method: 'POST', body: JSON.stringify(...) })
+        const response = await fetch('/api/user/InitialRegister', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                Passcode: passcode,
+                UserName: username,
+                Password: password,
+                ConfirmPassword: confirmPassword,
+                Email: email
+            }),
+        });
+        if (response.ok) {
+
+            await goto("/Login");
+
+
+        } else if (response.status === 400) {
+            // IdentityError[] を読み取る
+            const errors: { code: string; description: string }[] = await response.json();
+            error = errors.map(e => e.description).join('\n');
+        } else {
+            // その他のエラー
+            error = '不明なエラーが発生しました。';
+            console.error(await response.text());
+        }
 
     }
 </script>
@@ -71,18 +82,19 @@
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
 
-    .form-container h2 {
-        font-size: 1.5rem;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 20px;
-    }
+        .form-container h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
 
-    .form-container label {
-        display: block;
-        font-size: 1rem;
-        margin-bottom: 5px;
-    }
+        .form-container label {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+
     .required-mark::after {
         content: " *";
         color: red;
@@ -98,9 +110,9 @@
         font-size: 1rem;
     }
 
-    .form-container input[type="password"] {
-        -webkit-text-security: disc;
-    }
+        .form-container input[type="password"] {
+            -webkit-text-security: disc;
+        }
 
     .form-container .error {
         color: red;
@@ -143,7 +155,7 @@
         <input id="username" type="text" bind:value={username} />
     </div>
     <div>
-        <label for="email" >メールアドレス(任意)</label>
+        <label for="email">メールアドレス(任意)</label>
         <input id="email" type="text" bind:value={email} />
     </div>
     <div>
