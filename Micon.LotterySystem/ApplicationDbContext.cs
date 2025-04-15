@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Micon.LotterySystem
 {
-    public class ApplicationDbContext:DbContext
+    public class ApplicationDbContext : DbContext
     {
         public DbSet<LotteryGroup> LotteryGroups { get; set; }
         public DbSet<LotterySlots> LotterySlots { get; set; }
@@ -17,6 +17,41 @@ namespace Micon.LotterySystem
 
         public ApplicationDbContext() : base()
         {
+        }
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<LotteryGroup>(builder =>
+            {
+                builder.HasOne(x => x.TicketInfo)
+                    .WithOne(x => x.LotteryGroup)
+                    .HasForeignKey<LotteryGroup>(x => x.TicketInfoId);
+            });
+
+            modelBuilder.Entity<LotterySlots>(builder =>
+            {
+                builder.HasOne(x => x.LotteryGroup)
+                    .WithMany(x => x.LotterySlots)
+                    .HasForeignKey(x => x.LotteryGroupId);
+            });
+
+            modelBuilder.Entity<Ticket>(builder =>
+            {
+                builder.HasOne(x => x.LotteryGroup)
+                    .WithMany(x => x.Tickets)
+                    .HasForeignKey(x => x.LotteryGroupId);
+                builder.HasOne(x => x.LotterySlots)
+                    .WithMany(x => x.Tickets)
+                    .HasForeignKey(x => x.LotterySlotsId);
+            });
+
+            modelBuilder.Entity<Authority>(builder =>
+            {
+                builder.HasOne(x => x.Role)
+                    .WithMany(x => x.Authorities)
+                    .HasForeignKey(x => x.RoleId);
+            });
         }
     }
 }
