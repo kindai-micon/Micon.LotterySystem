@@ -3,6 +3,7 @@ using Micon.LotterySystem.Models.API;
 using Micon.LotterySystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -34,17 +35,30 @@ namespace Micon.LotterySystem.Controllers
         [HttpPost(nameof(DeleteRole))]
         public async Task<IActionResult> DeleteRole([FromBody] string roleName)
         {
+            if(roleName.ToLower() == "admin")
+            {
+                return Conflict();
+            }
             var role = await roleManager.FindByNameAsync(roleName);
             if (role == null)
             {
                 return NotFound();
             }
+            
             var result = await roleManager.DeleteAsync(role);
+            applicationDbContext.RemoveRange(role.Authorities);
             if (!result.Succeeded)
             {
                 return BadRequest(result.Errors);
             }
+            
             return Ok();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Get()
+        {
+            return Ok(applicationDbContext.Authorities.ToArray());
         }
 
         [Authorize]
@@ -77,7 +91,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok(authority);
         }
         [Authorize(Policy = "RoleManagement")]
-        [HttpGet(nameof(AddAuthority))]
+        [HttpPost(nameof(AddAuthority))]
         public async Task<IActionResult> AddAuthority([FromBody] RoleAuthority roleAuthority)
         {
             var role = await roleManager.Roles.Where(x => x.Name == roleAuthority.RoleName)
@@ -103,7 +117,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok();
         }
         [Authorize(Policy = "RoleManagement")]
-        [HttpGet(nameof(RemoveAuthority))]
+        [HttpPost(nameof(RemoveAuthority))]
         public async Task<IActionResult> RemoveAuthority([FromBody] RoleAuthority roleAuthority)
         {
             var role = await roleManager.Roles.Where(x => x.Name == roleAuthority.RoleName)

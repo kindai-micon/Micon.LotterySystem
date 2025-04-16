@@ -43,7 +43,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok(sendUser);
         }
 
-        [Authorize]
+        [Authorize("UserManagement")]
         [HttpGet(nameof(UserInfo))]
         public async Task<IActionResult> UserInfo([FromQuery]string userName)
         {
@@ -61,6 +61,26 @@ namespace Micon.LotterySystem.Controllers
                     .ToListAsync();
             return Ok(sendUser);
         }
+
+        [Authorize("UserManagement")]
+        [HttpPost(nameof(DeleteUser))]
+        public async Task<IActionResult> DeleteUser([FromBody] string userName)
+        {
+            var my = await userManager.GetUserAsync(User);
+            var user = await userManager.FindByNameAsync(userName);
+
+            var result = await userManager.DeleteAsync(my);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+            if(my.Id == user.Id)
+            {
+                await signInManager.SignOutAsync();
+            }
+            return Ok();
+        }
+
         [HttpPost(nameof(LoginByEmail))]
         public async Task<IActionResult> LoginByEmail([FromBody] LoginEmailModel loginModel)
         {
@@ -98,13 +118,13 @@ namespace Micon.LotterySystem.Controllers
                 .ToListAsync();
             return Ok(sendUser);
         }
-
+        
         [Authorize(Policy = "UserManagement")]
         [HttpPost(nameof(Register))]
         public async Task<IActionResult> Register([FromBody] RegisterModel registerModel)
         {
 
-            var user = await userManager.FindByEmailAsync(registerModel.Email);
+            var user = await userManager.FindByNameAsync(registerModel.UserName);
             if (user == null)
             {
                 ApplicationUser applicationUser = new ApplicationUser(registerModel.UserName);
@@ -125,7 +145,7 @@ namespace Micon.LotterySystem.Controllers
             }
             else
             {
-                BadRequest("User already exists");
+                BadRequest(new IdentityError[] { new IdentityError() { Code = "Exists", Description = "存在するユーザー名です" } });
             }
             return Ok();
         }
@@ -232,6 +252,11 @@ namespace Micon.LotterySystem.Controllers
         [HttpPut(nameof(RemoveRole))]
         public async Task<IActionResult> RemoveRole([FromBody] UserRoleModel userRoleModel)
         {
+            var users = await userManager.GetUsersInRoleAsync(userRoleModel.RoleName);
+            if(userRoleModel.RoleName == "Admin"&&users.Count <= 1)
+            {
+                return Conflict();
+            }
             var user = await userManager.FindByNameAsync(userRoleModel.UserName);
             if (user == null)
             {
