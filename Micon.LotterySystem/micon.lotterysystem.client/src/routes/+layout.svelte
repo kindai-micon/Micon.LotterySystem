@@ -13,7 +13,7 @@
     const menuItems = [
         { name: 'ユーザー管理', href: '/users' },
         { name: 'ロール管理', href: '/roles' },
-        { name: '抽選会', href: '/LotteryGroup' },
+        { name: '抽選会管理', href: '/lottery' },
 
 
     ];
@@ -187,9 +187,9 @@
     <div class="drawer">
         <button class="drawer-close" on:click={toggleDrawer}>✖ 閉じる</button>
         <nav>
-            <a href="/users" on:click={toggleDrawer}>ユーザー管理</a>
-            <a href="/roles" on:click={toggleDrawer}>ロール管理</a>
-            <a href="/lottery" on:click={toggleDrawer}>抽選券管理</a>
+            {#each menuItems as item}
+            <a href={item.href} on:click={toggleDrawer}>{item.name}</a>
+            {/each}
         </nav>
     </div>
     {/if}
@@ -201,9 +201,10 @@
         {#if !isLoginPath}
         <aside class="sidebar">
             <nav>
-                <a href="/users">ユーザー管理</a>
-                <a href="/roles">ロール管理</a>
-                <a href="/lottery">抽選券管理</a>
+                {#each menuItems as item}
+                <a href={item.href}>{item.name}</a>
+                {/each}
+
             </nav>
         </aside>
         {/if}
