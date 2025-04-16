@@ -5,34 +5,45 @@
     type SendRole = { name: string; authorities: SendAuthority[] };
 
     let roles: SendRole[] = [];
+    let authorityOptions: string[] = [];
 
     let newRoleName = '';
-    let newAuthorities: string[] = [''];
+    let selectedAuthorities: string[] = [''];
 
     onMount(async () => {
-        const response = await fetch('/api/Role/RoleList');
-        roles = await response.json();
+        const [rolesResponse, authoritiesResponse] = await Promise.all([
+            fetch('/api/Role/RoleList'),
+            fetch('/api/Role/AuthorityList')
+        ]);
+
+        roles = await rolesResponse.json();
+        authorityOptions = await authoritiesResponse.json();
+        console.log(authorityOptions);
     });
 
+    function getAvailableOptions(index: number): string[] {
+        const used = selectedAuthorities.filter((_, i) => i !== index);
+        return authorityOptions.filter(a => !used.includes(a));
+    }
+
     function addAuthorityField() {
-        newAuthorities = [...newAuthorities, ''];
+        selectedAuthorities = [...selectedAuthorities, ''];
     }
 
     function updateAuthority(index: number, value: string) {
-        newAuthorities[index] = value;
+        selectedAuthorities[index] = value;
     }
 
     function removeAuthority(index: number) {
-        newAuthorities.splice(index, 1);
-        newAuthorities = [...newAuthorities];
+        selectedAuthorities.splice(index, 1);
+        selectedAuthorities = [...selectedAuthorities];
     }
 
     function addRole() {
         if (!newRoleName.trim()) return;
 
-        const validAuthorities = newAuthorities
-            .map(name => name.trim())
-            .filter(name => name !== '')
+        const validAuthorities = selectedAuthorities
+            .filter(name => name.trim() !== '')
             .map(name => ({ name }));
 
         roles = [
@@ -44,7 +55,7 @@
         ];
 
         newRoleName = '';
-        newAuthorities = [''];
+        selectedAuthorities = [''];
     }
 
     function removeRole(index: number) {
@@ -54,17 +65,13 @@
 </script>
 
 <style>
-    body {
-        margin: 0;
-        font-family: sans-serif;
-        background-color: #f5f5f5;
-    }
-
     .container {
         display: flex;
         flex-direction: column;
         align-items: center;
         padding: 2rem;
+        font-family: sans-serif;
+        background: #f9f9f9;
     }
 
     h2 {
@@ -93,19 +100,18 @@
     }
 
     .authority {
-        color: #666;
+        color: #555;
         font-size: 0.9rem;
         margin-top: 0.5rem;
     }
 
     .form-card {
         background: white;
-        border: 1px solid #ccc;
-        border-radius: 10px;
         padding: 2rem;
+        border-radius: 10px;
+        border: 1px solid #ccc;
         max-width: 500px;
         width: 100%;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
     .form-group {
@@ -115,14 +121,14 @@
         .form-group label {
             font-weight: bold;
             display: block;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.3rem;
         }
 
-    input[type="text"] {
+    input[type="text"], select {
         width: 100%;
         padding: 0.5rem;
-        border-radius: 6px;
         border: 1px solid #aaa;
+        border-radius: 6px;
         box-sizing: border-box;
     }
 
@@ -137,13 +143,13 @@
             background: #ff4d4d;
             color: white;
             border: none;
-            padding: 0.25rem 0.5rem;
+            padding: 0.3rem 0.6rem;
             border-radius: 4px;
             cursor: pointer;
         }
 
             .authority-field button:hover {
-                background: #e60000;
+                background: #d60000;
             }
 
     .add-authority {
@@ -206,19 +212,26 @@
 
         <div class="form-group">
             <label>Role名</label>
-            <input type="text" placeholder="例: 管理者" bind:value={newRoleName} />
+            <input type="text" bind:value={newRoleName} placeholder="例: 管理者" />
         </div>
 
         <div class="form-group">
             <label>権限</label>
-            {#each newAuthorities as authority, index}
+            {#each selectedAuthorities as selected, index}
             <div class="authority-field">
-                <input type="text"
-                       placeholder="例: ユーザー管理"
-                       bind:value={newAuthorities[index]}
-                       on:input={(e) => updateAuthority(index, e.target.value)}
-                />
-                {#if newAuthorities.length > 1}
+                <select bind:value={selectedAuthorities[index]}
+                        on:change={(e) =>
+                    updateAuthority(index, e.target.value)}
+                    >
+                    <option value="" disabled selected>選択してください</option>
+                    {#each getAvailableOptions(index) as option}
+                    <option value={option}>{option}</option>
+                    {/each}
+                    {#if selected && !authorityOptions.includes(selected)}
+                    <option value={selected} selected>{selected}</option>
+                    {/if}
+                </select>
+                {#if selectedAuthorities.length > 1}
                 <button on:click={() => removeAuthority(index)}>×</button>
                 {/if}
             </div>

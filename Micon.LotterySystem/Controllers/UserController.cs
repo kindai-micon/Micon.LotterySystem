@@ -22,6 +22,7 @@ namespace Micon.LotterySystem.Controllers
         SignInManager<ApplicationUser> signInManager, 
         RoleManager<ApplicationRole> roleManager,
         ApplicationDbContext applicationDbContext,
+        IAuthorityScanService authorityScanService,
         IPasscodeService passcodeService) : ControllerBase
     {
         [HttpGet(nameof(MyInfo))]
@@ -152,11 +153,14 @@ namespace Micon.LotterySystem.Controllers
                 {
                     return BadRequest(result.Errors.ToArray());
                 }
-                var authority1 = applicationDbContext.Authorities.Add(new Authority() { Name = "RoleManagement" });
-                var authority2 = applicationDbContext.Authorities.Add(new Authority() { Name = "UserManagement" });
+                List<Authority> authorities = new List<Authority>();
+                foreach (var authority in authorityScanService.Authority)
+                {
+                    var authority1 = applicationDbContext.Authorities.Add(new Authority() { Name = authority});
+                    authorities.Add(authority1.Entity);
 
-                applicationRole.Authorities.Add(authority1.Entity);
-                applicationRole.Authorities.Add(authority2.Entity);
+                }
+                applicationRole.Authorities.AddRange(authorities);
 
                 result = await userManager.AddToRoleAsync(applicationUser,applicationRole.Name);
                 if(result.Succeeded == false)
@@ -202,7 +206,7 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok(sendUsers);
         }
-        [Authorize(Policy = "RoleManagement")]
+        [Authorize(Policy = "UserRoleManagement")]
         [HttpPut(nameof(AddRole))]
         public async Task<IActionResult> AddRole([FromBody] UserRoleModel userRoleModel)
         {
@@ -224,7 +228,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok();
         }
 
-        [Authorize(Policy = "RoleManagement")]
+        [Authorize(Policy = "UserRoleManagement")]
         [HttpPut(nameof(RemoveRole))]
         public async Task<IActionResult> RemoveRole([FromBody] UserRoleModel userRoleModel)
         {
