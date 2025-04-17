@@ -14,18 +14,9 @@ namespace Micon.LotterySystem.Controllers
     [ApiController]
     public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,ApplicationDbContext applicationDbContext) : ControllerBase
     {
-        //[HttpGet(nameof(GetNowState))]
-        //public async Task<IActionResult> GetNowState([FromBody]string groupId, [FromQuery] string )
-        //{
-        //    var gid = applicationDbContext.LotteryGroups.FirstOrDefault(x => x.DisplayId.ToString() == groupId).Id;
-        //    var slot = await applicationDbContext.LotterySlots
-        //        .Where(x => x.LotteryGroupId == gid && (x.Status == Models.SlotStatus.Exchange || x.Status == Models.SlotStatus.DuringAnimation))
-        //        .FirstOrDefaultAsync();
 
-        //}
-
-        [HttpGet(nameof(ExecuteSlot))]
-        public async Task<IActionResult> ExecuteSlot([FromQuery] string groupId)
+        [HttpGet(nameof(ExecutingSlotState))]
+        public async Task<IActionResult> ExecutingSlotState([FromQuery] string groupId)
         {
             var group = await applicationDbContext.LotteryGroups.Where(x => x.DisplayId.ToString() == groupId).FirstOrDefaultAsync();
             var slot = await applicationDbContext.LotterySlots
@@ -166,7 +157,10 @@ namespace Micon.LotterySystem.Controllers
                 .Include(x=>x.LotteryGroup)
                 .Select(x=>x.LotteryGroup)
                 .FirstOrDefaultAsync();
-
+            if (applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id && !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange)).Count() != 1)
+            {
+                return Conflict();
+            }
             if (group == null)
             {
                 return NotFound();
@@ -190,11 +184,7 @@ namespace Micon.LotterySystem.Controllers
 
         public async Task<IActionResult> ExchangeStop([FromBody] string slotId)
         {
-            var group = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).Include(x=>x.LotteryGroup).Select(x=>x.LotteryGroup).FirstOrDefaultAsync();
-            if (group == null)
-            {
-                return NotFound();
-            }
+
             var slot = await applicationDbContext.LotterySlots
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x => x.Tickets)
@@ -207,8 +197,6 @@ namespace Micon.LotterySystem.Controllers
                 ticket.LotterySlotsId = null;
                 ticket.LotterySlots = null;
                 applicationDbContext.Update(ticket);
-
-
             }
 
             applicationDbContext.Update(slot);
@@ -218,7 +206,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok();
         }
 
-        public async Task<IActionResult> LotterySlotState([FromBody] string slotId)
+        public async Task<IActionResult> LotterySlotState([FromQuery] string slotId)
         {
             var slot = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).Include(x=>x.Tickets).FirstOrDefaultAsync();
             var slotResult = new WinningModel()
