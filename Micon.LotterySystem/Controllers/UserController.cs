@@ -227,7 +227,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok(sendUsers);
         }
         [Authorize(Policy = "UserView")]
-        [Authorize(Policy = "RoleManagement")]
+        [Authorize(Policy = "UserRoleManagement")]
         [HttpPut(nameof(AddRole))]
         public async Task<IActionResult> AddRole([FromBody] UserRoleModel userRoleModel)
         {
@@ -249,7 +249,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok();
         }
         [Authorize(Policy = "UserView")]
-        [Authorize(Policy = "RoleManagement")]
+        [Authorize(Policy = "UserRoleManagement")]
         [HttpPut(nameof(RemoveRole))]
         public async Task<IActionResult> RemoveRole([FromBody] UserRoleModel userRoleModel)
         {
