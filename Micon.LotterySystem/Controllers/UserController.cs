@@ -68,7 +68,12 @@ namespace Micon.LotterySystem.Controllers
         {
             var my = await userManager.GetUserAsync(User);
             var user = await userManager.FindByNameAsync(userName);
-
+            var adminUsers = await userManager.GetUsersInRoleAsync("Admin");
+            if(adminUsers.Any(x=>x.Id==user.Id) && adminUsers.Count == 1)
+            {
+                return Conflict(new IdentityError[] { new () { Code = "adminerror", Description = "AdminUserが一人以上存在する必要があります" } });
+            }
+            
             var result = await userManager.DeleteAsync(my);
             if (!result.Succeeded)
             {
