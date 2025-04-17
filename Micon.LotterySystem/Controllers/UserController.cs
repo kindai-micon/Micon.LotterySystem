@@ -145,7 +145,7 @@ namespace Micon.LotterySystem.Controllers
             }
             else
             {
-                BadRequest(new IdentityError[] { new IdentityError() { Code = "Exists", Description = "存在するユーザー名です" } });
+                return BadRequest(new IdentityError[] { new IdentityError() { Code = "Exists", Description = "存在するユーザー名です" } });
             }
             return Ok();
         }
