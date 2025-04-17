@@ -43,7 +43,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok(sendUser);
         }
 
-        [Authorize("UserManagement")]
+        [Authorize("UserView")]
         [HttpGet(nameof(UserInfo))]
         public async Task<IActionResult> UserInfo([FromQuery] string userName)
         {
