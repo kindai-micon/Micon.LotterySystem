@@ -1,13 +1,15 @@
 ﻿<script lang="ts">
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
+    import { get } from 'svelte/store';
 
-    let lotteryid = $page.params.lotteryid;
+    const lotteryid = get(page).params.lotteryid;
     let lotteryName = "";
 
     onMount(async () => {
-        let res = await fetch(`/api/LotteryGroup/Name?id=${lotteryid}`);
+        const res = await fetch(`/api/LotteryGroup/Name?id=${lotteryid}`);
         lotteryName = await res.text();
+        await fetchSlots();
     });
 
     type LotterySlot = {
@@ -17,15 +19,16 @@
         merchandise: string;
         numberOfFrames: number;
         deadLine: string | null;
+        noDeadline?: boolean;
     };
 
     let slots: LotterySlot[] = [];
     let editing: Record<string, boolean> = {};
     let newSlot: Partial<LotterySlot> = {};
+    let noDeadline = false;
     let loading = true;
-
-    function toDateTimeLocalFormat(dateStr: string | null): string | null {
-        if (!dateStr) return null;
+    function toDateTimeLocalFormat(dateStr: string | null): string {
+        if (!dateStr) return "";
         const date = new Date(dateStr);
         const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
         return offsetDate.toISOString().slice(0, 16);
@@ -35,13 +38,14 @@
         loading = true;
         const encodedid = encodeURIComponent(lotteryid);
         const res = await fetch(`/api/LotterySlot/List/${encodedid}`);
-        let obj = await res.json();
+        const obj = await res.json();
 
         slots = obj.map((slot: LotterySlot) => ({
             ...slot,
-            deadLine: toDateTimeLocalFormat(slot.deadLine)
+            deadLine: toDateTimeLocalFormat(slot.deadLine),
+            noDeadline: slot.deadLine === null
         }));
-
+        console.log(slots);
         loading = false;
     }
 
@@ -53,7 +57,7 @@
                 LotteryId: lotteryid,
                 SlotId: id,
                 ...slot,
-                deadLine: slot.deadLine ? new Date(slot.deadLine).toISOString() : null
+                deadLine: slot.noDeadline ? null : slot.deadLine ? new Date(slot.deadLine).toISOString() : null
             })
         });
 
@@ -86,7 +90,7 @@
             LotteryId: lotteryid,
             Merchandise: newSlot.merchandise ?? '',
             NumberOfFrames: newSlot.numberOfFrames ?? 0,
-            DeadLine: newSlot.deadLine ? new Date(newSlot.deadLine).toISOString() : new Date().toISOString()
+            DeadLine: noDeadline ? null : newSlot.deadLine ? new Date(newSlot.deadLine).toISOString() : new Date().toISOString()
         };
 
         const res = await fetch('/api/LotterySlot/Create', {
@@ -97,13 +101,12 @@
 
         if (res.ok) {
             newSlot = {};
+            noDeadline = false;
             await fetchSlots();
         } else {
             alert('作成に失敗しました');
         }
     }
-
-    onMount(fetchSlots);
 </script>
 
 <style>
@@ -117,14 +120,18 @@
 
     .slot-actions {
         display: flex;
+        justify-content: flex-start;
         gap: 0.5rem;
         margin-top: 0.5rem;
     }
 
-    input, select {
+    input {
         padding: 0.4rem;
         border-radius: 0.5rem;
         border: 1px solid #ccc;
+    }
+
+    .width-max {
         width: 100%;
     }
 
@@ -151,6 +158,15 @@
         .btn:hover {
             background: #005fa3;
         }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        justify-content: flex-start;
+        font-size: 0.95rem;
+        margin-top: 0.5rem;
+    }
 </style>
 
 <h1>抽選枠管理 - {lotteryName}</h1>
@@ -159,19 +175,34 @@
     <h3>＋ 新しい抽選枠を追加</h3>
     <div class="field">
         <label>名前</label>
-        <input bind:value={newSlot.name} />
+        <input bind:value={newSlot.name} class="width-max" />
     </div>
     <div class="field">
         <label>景品</label>
-        <input bind:value={newSlot.merchandise} />
+        <input bind:value={newSlot.merchandise} class="width-max" />
     </div>
     <div class="field">
         <label>枠数</label>
-        <input type="number" bind:value={newSlot.numberOfFrames} />
+        <input type="number" bind:value={newSlot.numberOfFrames} class="width-max" />
     </div>
     <div class="field">
         <label>締切</label>
-        <input type="datetime-local" bind:value={newSlot.deadLine} />
+        <input type="datetime-local" class="width-max"
+               bind:value={newSlot.deadLine}
+               disabled={noDeadline}
+               on:input={(e) => newSlot.deadLine = e.target.value} />
+        <label class="checkbox-label">
+            <input type="checkbox"
+                   bind:checked={noDeadline}
+                   on:change={() => {
+            if (slot.noDeadline) {
+            slot.deadLine = "";
+            } else {
+            slot.deadLine = toDateTimeLocalFormat(new Date().toISOString());
+            }
+            }} />
+            締切なし
+        </label>
     </div>
     <button class="btn" on:click={createSlot}>作成</button>
 </div>
@@ -179,24 +210,39 @@
 {#if loading}
 <p>読み込み中...</p>
 {:else}
-  {#each slots as slot, index}
+    {#each slots as slot, index}
 <div class="slot-card">
     {#if editing[slot.slotId]}
     <div class="field">
         <label>名前</label>
-        <input bind:value={slot.name} />
+        <input bind:value={slot.name} class="width-max " />
     </div>
     <div class="field">
         <label>景品</label>
-        <input bind:value={slot.merchandise} />
+        <input bind:value={slot.merchandise} class="width-max" />
     </div>
     <div class="field">
         <label>枠数</label>
-        <input type="number" bind:value={slot.numberOfFrames} />
+        <input type="number" class="width-max " bind:value={slot.numberOfFrames} />
     </div>
     <div class="field">
         <label>締切</label>
-        <input type="datetime-local" bind:value={slot.deadLine} />
+        <input class="width-max " type="datetime-local"
+               bind:value={slot.deadLine}
+               disabled={slot.noDeadline}
+               on:input={(e) => slot.deadLine = e.target.value} />
+        <label class="checkbox-label">
+            <input type="checkbox"
+                   bind:checked={slot.noDeadline}
+                   on:change={() => {
+            if (slot.noDeadline) {
+            slot.deadLine = "";
+            } else {
+            slot.deadLine = toDateTimeLocalFormat(new Date().toISOString());
+            }
+            }} />
+            締切なし
+        </label>
     </div>
     <div class="slot-actions">
         <button class="btn" on:click={() => updateSlot(slot, slot.slotId)}>保存</button>
@@ -218,5 +264,5 @@
     </div>
     {/if}
 </div>
-  {/each}
+    {/each}
 {/if}

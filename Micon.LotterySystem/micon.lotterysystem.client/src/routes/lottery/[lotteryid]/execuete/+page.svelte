@@ -35,60 +35,76 @@
         });
     };
 </script>
-
-<h2>{prizeLevel} 抽選中！</h2>
-
-<div class="grid">
-    {#each displayedNumbers as digits, i}
-    <div class="slot">
-        {#each digits as num}
-        <div class="digit">{num}</div>
-        {/each}
-    </div>
-    {/each}
-</div>
-
-{#if !spinning}
-<button on:click={startDrawing}>抽選スタート</button>
-{:else}
-<p>抽選中...</p>
-{/if}
-
 <style>
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 1rem;
-        margin: 2rem 0;
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 
-    .slot {
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 1200px;
+        padding: 2rem;
+    }
+
+    .card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        padding: 1rem;
         display: flex;
-        justify-content: center;
-        gap: 0.3rem;
-        padding: 0.5rem;
-        border: 2px solid #333;
-        border-radius: 8px;
-        background: #f9f9f9;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        flex-direction: column;
+        align-items: center;
+        transition: transform 0.3s ease;
+    }
+
+        .card:hover {
+            transform: scale(1.03);
+        }
+
+    .digits {
+        display: flex;
+        gap: 0.4rem;
+        margin-top: 0.5rem;
     }
 
     .digit {
         font-size: 2rem;
         font-weight: bold;
-        width: 2.5rem;
-        height: 2.5rem;
+        width: 2.8rem;
+        height: 2.8rem;
+        line-height: 2.8rem;
         text-align: center;
-        line-height: 2.5rem;
-        border: 1px solid #ccc;
+        border: 2px solid #333;
         border-radius: 6px;
-        background: white;
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+        background: #f0f0f0;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
     }
 
-    button {
-        font-size: 1.2rem;
-        padding: 0.6rem 2rem;
-        cursor: pointer;
+    .label {
+        font-size: 1rem;
+        color: #666;
     }
 </style>
+
+<div class="container">
+    <h2>{prizeLevel} 抽選中！</h2>
+
+    <div class="grid">
+        {#each displayedNumbers as digits, index}
+        <div class="card">
+            <div class="label">No.{index + 1}</div>
+            <div class="digits">
+                {#each digits as num}
+                <div class="digit">{num}</div>
+                {/each}
+            </div>
+        </div>
+        {/each}
+    </div>
+</div>
+

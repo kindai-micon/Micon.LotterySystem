@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Micon.LotterySystem.Services;
 using System.Text.Json.Serialization;
+using Micon.LotterySystem.Hubs;
 namespace Micon.LotterySystem
 {
     public class Program
@@ -31,6 +32,7 @@ namespace Micon.LotterySystem
             builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
             builder.Services.AddSwaggerGen();
             builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
+            builder.Services.AddSignalR();
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db"));
@@ -84,6 +86,7 @@ namespace Micon.LotterySystem
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<LotteryHub>("/api/lotteryHub");
             app.Use(async (context, next) =>
             {
                 // /api で始まるリクエストはそのまま処理を続行
