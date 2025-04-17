@@ -18,16 +18,17 @@ namespace Micon.LotterySystem.Controllers
     [Route("api/[controller]")]
     [ApiController]
     public class UserController(
-        UserManager<ApplicationUser> userManager, 
-        SignInManager<ApplicationUser> signInManager, 
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         RoleManager<ApplicationRole> roleManager,
         ApplicationDbContext applicationDbContext,
+        IAuthorityScanService authorityScanService,
         IPasscodeService passcodeService) : ControllerBase
     {
         [HttpGet(nameof(MyInfo))]
         public async Task<IActionResult> MyInfo()
         {
-            
+
             var user = await userManager.GetUserAsync(User);
             if (user == null)
             {
@@ -42,9 +43,9 @@ namespace Micon.LotterySystem.Controllers
             return Ok(sendUser);
         }
 
-        [Authorize(Policy = "UserView")]
+        [Authorize("UserView")]
         [HttpGet(nameof(UserInfo))]
-        public async Task<IActionResult> UserInfo([FromQuery]string userName)
+        public async Task<IActionResult> UserInfo([FromQuery] string userName)
         {
 
             var user = await userManager.FindByNameAsync(userName);
@@ -60,6 +61,31 @@ namespace Micon.LotterySystem.Controllers
                     .ToListAsync();
             return Ok(sendUser);
         }
+
+        [Authorize("UserManagement")]
+        [HttpPost(nameof(DeleteUser))]
+        public async Task<IActionResult> DeleteUser([FromBody] string userName)
+        {
+            var my = await userManager.GetUserAsync(User);
+            var user = await userManager.FindByNameAsync(userName);
+            var adminUsers = await userManager.GetUsersInRoleAsync("Admin");
+            if(adminUsers.Any(x=>x.Id==user.Id) && adminUsers.Count == 1)
+            {
+                return Conflict(new IdentityError[] { new () { Code = "adminerror", Description = "AdminUserが一人以上存在する必要があります" } });
+            }
+            
+            var result = await userManager.DeleteAsync(my);
+            if (!result.Succeeded)
+            {
+                return BadRequest(result.Errors);
+            }
+            if (my.Id == user.Id)
+            {
+                await signInManager.SignOutAsync();
+            }
+            return Ok();
+        }
+
         [HttpPost(nameof(LoginByEmail))]
         public async Task<IActionResult> LoginByEmail([FromBody] LoginEmailModel loginModel)
         {
@@ -103,7 +129,7 @@ namespace Micon.LotterySystem.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterModel registerModel)
         {
 
-            var user = await userManager.FindByEmailAsync(registerModel.Email);
+            var user = await userManager.FindByNameAsync(registerModel.UserName);
             if (user == null)
             {
                 ApplicationUser applicationUser = new ApplicationUser(registerModel.UserName);
@@ -112,7 +138,7 @@ namespace Micon.LotterySystem.Controllers
                 {
                     return BadRequest(result.Errors);
                 }
-                if(registerModel.Email != null)
+                if (registerModel.Email != null)
                 {
                     result = await userManager.SetEmailAsync(applicationUser, registerModel.Email);
 
@@ -124,7 +150,7 @@ namespace Micon.LotterySystem.Controllers
             }
             else
             {
-                BadRequest("User already exists");
+                return BadRequest(new IdentityError[] { new IdentityError() { Code = "Exists", Description = "存在するユーザー名です" } });
             }
             return Ok();
         }
@@ -133,7 +159,7 @@ namespace Micon.LotterySystem.Controllers
         {
             if (await passcodeService.CheckPascodeAsync(initialUser.Passcode))
             {
-                if(initialUser.Password != initialUser.ConfirmPassword)
+                if (initialUser.Password != initialUser.ConfirmPassword)
                 {
                     return BadRequest(new IdentityError[] { new IdentityError() { Code = "Passcode", Description = "Passcodeが異なります" } });
 
@@ -142,24 +168,27 @@ namespace Micon.LotterySystem.Controllers
                 applicationUser.UserName = initialUser.UserName;
                 applicationUser.Email = initialUser.Email;
                 var result = await userManager.CreateAsync(applicationUser, initialUser.Password);
-                if(result.Succeeded == false)
+                if (result.Succeeded == false)
                 {
                     return BadRequest(result.Errors.ToArray());
                 }
                 ApplicationRole applicationRole = new ApplicationRole("Admin");
-                result = await roleManager.CreateAsync(applicationRole );
-                if(result.Succeeded == false)
+                result = await roleManager.CreateAsync(applicationRole);
+                if (result.Succeeded == false)
                 {
                     return BadRequest(result.Errors.ToArray());
                 }
-                var authority1 = applicationDbContext.Authorities.Add(new Authority() { Name = "RoleManagement" });
-                var authority2 = applicationDbContext.Authorities.Add(new Authority() { Name = "UserManagement" });
+                List<Authority> authorities = new List<Authority>();
+                foreach (var authority in authorityScanService.Authority)
+                {
+                    var authority1 = applicationDbContext.Authorities.Add(new Authority() { Name = authority });
+                    authorities.Add(authority1.Entity);
 
-                applicationRole.Authorities.Add(authority1.Entity);
-                applicationRole.Authorities.Add(authority2.Entity);
+                }
+                applicationRole.Authorities.AddRange(authorities);
 
-                result = await userManager.AddToRoleAsync(applicationUser,applicationRole.Name);
-                if(result.Succeeded == false)
+                result = await userManager.AddToRoleAsync(applicationUser, applicationRole.Name);
+                if (result.Succeeded == false)
                 {
                     return BadRequest(result.Errors.ToArray());
                 }
@@ -229,6 +258,11 @@ namespace Micon.LotterySystem.Controllers
         [HttpPut(nameof(RemoveRole))]
         public async Task<IActionResult> RemoveRole([FromBody] UserRoleModel userRoleModel)
         {
+            var users = await userManager.GetUsersInRoleAsync(userRoleModel.RoleName);
+            if (userRoleModel.RoleName == "Admin" && users.Count <= 1)
+            {
+                return Conflict();
+            }
             var user = await userManager.FindByNameAsync(userRoleModel.UserName);
             if (user == null)
             {

@@ -80,6 +80,7 @@
         background-color: white;
         border-radius: 10px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        box-sizing: border-box;
     }
 
         .form-container h2 {
@@ -108,6 +109,7 @@
         border: 1px solid #ccc;
         border-radius: 5px;
         font-size: 1rem;
+        box-sizing: border-box;
     }
 
         .form-container input[type="password"] {
@@ -135,12 +137,14 @@
         border-radius: 5px;
         font-size: 1rem;
         cursor: pointer;
+        box-sizing: border-box;
     }
 
         .form-container button:hover {
             background-color: #0056b3;
         }
 </style>
+
 
 <div class="form-container">
     <h1>初期ユーザー作成</h1>

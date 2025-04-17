@@ -24,6 +24,7 @@ namespace Micon.LotterySystem
             builder.Services.AddScoped<IPasscodeService, PasscodeService>();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
             builder.Services.AddSwaggerGen();
             builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -32,10 +33,13 @@ namespace Micon.LotterySystem
             });
             builder.Services.AddAuthorization(options =>
             {
-                options.AddPolicy("RoleManagement", policy =>
-                    policy.Requirements.Add(new DynamicRoleRequirement("RoleManagement")));
-                options.AddPolicy("UserManagement", policy =>
-                    policy.Requirements.Add(new DynamicRoleRequirement("UserManagement")));
+                AuthorityScanService authorityScanService = new AuthorityScanService();
+                foreach(var auth in authorityScanService.Authority)
+                {
+                    options.AddPolicy(auth, policy =>
+                    policy.Requirements.Add(new DynamicRoleRequirement(auth)));
+                }
+                
 
             });
             builder.Services.AddAuthentication(option =>
@@ -97,6 +101,8 @@ namespace Micon.LotterySystem
             {
                 var dbContext = sp.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 dbContext.Database.Migrate();
+                var authorityScanService = sp.ServiceProvider.GetRequiredService<IAuthorityScanService>();
+
             }
             app.Run();
         }
