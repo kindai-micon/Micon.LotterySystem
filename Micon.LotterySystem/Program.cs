@@ -15,35 +15,27 @@ namespace Micon.LotterySystem
     {
         public static void Main(string[] args)
         {
-            // ✅ 明示的に appsettings.json を読み込むようにする
-            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-            {
-                Args = args,
-                ContentRootPath = Directory.GetCurrentDirectory(),
-                EnvironmentName = Environments.Development // ← appsettings.Development.json も対象になる
-            });
+            // ← 必要最低限でOK。appsettings.json や環境変数も読み込まれる。
+            var builder = WebApplication.CreateBuilder(args);
 
-            // ✅ デバッグ出力（削除してOK）
-            Console.WriteLine("接続文字列: " + builder.Configuration.GetConnectionString("lottery-db"));
-
-            // サービスの登録
+            // JSONループ防止など
             builder.Services.AddControllers().AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
 
+            // サービス登録
             builder.Services.AddScoped<IPasscodeService, PasscodeService>();
             builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
             builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
 
+            // DB接続
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db"));
             });
 
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-
+            // 認証・認可
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultScheme = IdentityConstants.ApplicationScheme;
@@ -62,10 +54,9 @@ namespace Micon.LotterySystem
             .AddErrorDescriber<JapaneseIdentityErrorDescriber>()
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
-            // 認可ポリシーの追加
             builder.Services.AddAuthorization(options =>
             {
-                AuthorityScanService authorityScanService = new AuthorityScanService();
+                var authorityScanService = new AuthorityScanService();
                 foreach (var auth in authorityScanService.Authority)
                 {
                     options.AddPolicy(auth, policy =>
@@ -73,8 +64,12 @@ namespace Micon.LotterySystem
                 }
             });
 
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
             var app = builder.Build();
 
+            // 開発時のみ Swagger
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -90,7 +85,7 @@ namespace Micon.LotterySystem
 
             app.MapControllers();
 
-            // SPA対応：index.html にリダイレクト（/api, /account 以外）
+            // SPAルーティング（/api, /account 以外は index.html）
             app.Use(async (context, next) =>
             {
                 if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
@@ -108,7 +103,7 @@ namespace Micon.LotterySystem
                 await next();
             });
 
-            // マイグレーション実行（開発時のみ）
+            // マイグレーション自動適用（開発環境限定にしたいなら if 文追加）
             using (var scope = app.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

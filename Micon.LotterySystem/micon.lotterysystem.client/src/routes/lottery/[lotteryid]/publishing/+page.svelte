@@ -7,6 +7,8 @@
 	let issueCount = 10;
 	let totalIssued = 0;
 
+	let isGenerating = false; // 発行中かどうかの状態
+
 	type LogEntry = {
 	issuer: string;
 	date: string;
@@ -41,8 +43,8 @@
 	}
 	});
 
-
 	async function generateTickets() {
+	isGenerating = true; // 発行開始
 	try {
 	const response = await fetch('/api/pdf/generate', {
 	method: 'POST',
@@ -68,12 +70,33 @@
 	document.body.appendChild(a);
 	a.click();
 	document.body.removeChild(a);
+
+	// 発行後ログを更新
+	await refreshLogs();
 	} catch (err) {
 	console.error("エラー:", err);
 	alert("予期せぬエラーが発生しました");
+	} finally {
+	isGenerating = false; // 発行終了
 	}
 	}
 
+	async function refreshLogs() {
+	const logRes = await fetch(`/api/pdf/logs?lotteryGroupId=${lotteryId}`);
+	if (logRes.ok) {
+	const data = await logRes.json();
+
+	logs = data.map(entry => ({
+	issuer: entry.issuerName,
+	date: new Date(entry.issuedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" }),
+	count: entry.count,
+	startNumber: entry.startNumber,
+	endNumber: entry.endNumber
+	}));
+
+	totalIssued = logs.reduce((sum, log) => sum + log.count, 0);
+	}
+	}
 </script>
 
 <style>
@@ -117,7 +140,12 @@
 	cursor: pointer;
 	}
 
-	button:hover {
+	button:disabled {
+	background-color: #a0c5e8;
+	cursor: not-allowed;
+	}
+
+	button:hover:not(:disabled) {
 	background-color: #005ea2;
 	}
 
@@ -127,7 +155,8 @@
 	margin-top: 1rem;
 	}
 
-	.log-table th, .log-table td {
+	.log-table th,
+	.log-table td {
 	border: 1px solid #ccc;
 	padding: 0.5rem;
 	text-align: center;
@@ -144,7 +173,13 @@
 	<div class="section">
 		<div class="label">発行枚数を入力：</div>
 		<input type="number" bind:value={issueCount} min="1" />
-		<button on:click={generateTickets}>抽選券を発行</button>
+		<button on:click={generateTickets} disabled={isGenerating}>
+			{#if isGenerating}
+			発行中...
+			{:else}
+			抽選券を発行
+			{/if}
+		</button>
 	</div>
 
 	<div class="section">

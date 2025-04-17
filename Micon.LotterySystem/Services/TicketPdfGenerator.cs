@@ -1,11 +1,12 @@
-﻿using System.Drawing;
-using System.Drawing.Imaging;
-using ZXing;
+﻿using ZXing;
 using ZXing.Common;
 using QuestPDF.Fluent;
-using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Micon.LotterySystem.Models;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Formats.Png;
+using QuestPDF.Helpers;
 
 public class TicketPdfGenerator
 {
@@ -32,29 +33,31 @@ public class TicketPdfGenerator
                     {
                         grid.Item().Border(1).Padding(8).Height(150).Width(250).Column(ticketCol =>
                         {
-                            // 1. タイトル：中央寄せ
+                            // タイトル
                             ticketCol.Item().AlignCenter().Text(ticket.Name).FontSize(16).SemiBold();
 
-                            // 2. 中段：QRコード + 番号
+                            // 中段：QR + 番号
                             ticketCol.Item().Row(row =>
                             {
                                 row.Spacing(5);
-
-                                // 左側：抽選番号（下寄せ）
                                 row.RelativeItem().AlignBottom().Text($"抽選番号：No.{ticket.TicketNumber}")
                                     .FontSize(16).SemiBold();
 
-                                // 右側：QRコード（右寄せ・サイズ指定）
-                                row.ConstantItem(100).AlignRight().Height(80).Image(GenerateQrCode(ticket.Url), ImageScaling.FitHeight);
+                                row.ConstantItem(100).AlignRight().Height(80)
+                                    .Image(GenerateQrCode(ticket.Url), ImageScaling.FitHeight);
                             });
 
-                            // 3. 下段：説明と注意
+                            // 説明と注意
                             ticketCol.Item().PaddingTop(5).Column(bottom =>
                             {
                                 bottom.Item().Text(ticket.Description).FontSize(9);
                                 bottom.Item().Text(ticket.Warning).FontSize(8);
+
+                                // Powered by 表記
+                                bottom.Item().AlignRight().Text("Powered by Micon club").FontSize(6).Italic().FontColor(Colors.Grey.Medium);
                             });
                         });
+
                     }
                 });
             });
@@ -78,20 +81,12 @@ public class TicketPdfGenerator
 
         var pixelData = writer.Write(text);
 
-        using var bitmap = new Bitmap(pixelData.Width, pixelData.Height, PixelFormat.Format32bppRgb);
-        var bitmapData = bitmap.LockBits(new Rectangle(0, 0, pixelData.Width, pixelData.Height),
-                                         ImageLockMode.WriteOnly, PixelFormat.Format32bppRgb);
-        try
-        {
-            System.Runtime.InteropServices.Marshal.Copy(pixelData.Pixels, 0, bitmapData.Scan0, pixelData.Pixels.Length);
-        }
-        finally
-        {
-            bitmap.UnlockBits(bitmapData);
-        }
+        using var image = SixLabors.ImageSharp.Image.LoadPixelData<Rgba32>(
+            pixelData.Pixels, pixelData.Width, pixelData.Height
+        );
 
         using var ms = new MemoryStream();
-        bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+        image.Save(ms, new PngEncoder());
         return ms.ToArray();
     }
 }

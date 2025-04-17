@@ -3,6 +3,7 @@ using Micon.LotterySystem;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 [Route("api/pdf")]
 [ApiController]
@@ -28,9 +29,13 @@ public class TicketPdfController : ControllerBase
         if (user == null)
             return Unauthorized();
 
-        var lotteryGroup = _db.LotteryGroups.FirstOrDefault(g => g.DisplayId == request.LotteryGroupId);
-        if (lotteryGroup == null)
-            return BadRequest("無効な抽選会IDです");
+        var lotteryGroup = _db.LotteryGroups
+            .Include(g => g.TicketInfo)
+            .FirstOrDefault(g => g.DisplayId == request.LotteryGroupId);
+
+        if (lotteryGroup == null || lotteryGroup.TicketInfo == null)
+            return BadRequest("無効な抽選会IDまたはチケット情報が未設定です");
+
 
         long startNumber = _db.Tickets
             .Where(t => t.LotteryGroupId == lotteryGroup.Id)
