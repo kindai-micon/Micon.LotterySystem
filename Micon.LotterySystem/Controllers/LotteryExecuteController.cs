@@ -1,10 +1,7 @@
 ﻿using Micon.LotterySystem.Hubs;
 using Micon.LotterySystem.Models;
 using Micon.LotterySystem.Models.API;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Formatters.Xml;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,13 +17,15 @@ namespace Micon.LotterySystem.Controllers
         {
             var group = await applicationDbContext.LotteryGroups.Where(x => x.DisplayId.ToString() == groupId).FirstOrDefaultAsync();
             var slot = await applicationDbContext.LotterySlots
-                .Where(x => x.LotteryGroupId == group.Id && (x.Status == Models.SlotStatus.TargetLottery || x.Status == SlotStatus.ViewResult || x.Status == SlotStatus.DuringAnimation))
+                .Where(x => x.LotteryGroupId == group.Id && !(x.Status == Models.SlotStatus.TargetLottery || x.Status == SlotStatus.ViewResult || x.Status == SlotStatus.DuringAnimation))
                 .Include(x => x.Tickets)
                 .Select(
                 x => new WinningModel()
                 {
                     SlotId = x.Id.ToString(),
                     Name = x.Name,
+                    NumberOfFrames = x.NumberOfFrames,
+                    Status = x.Status,
                     Tickets = x.Tickets.Select(x => new WinnerTicket()
                     {
                         Number = x.Number.ToString(),
@@ -36,22 +35,32 @@ namespace Micon.LotterySystem.Controllers
                 .FirstOrDefaultAsync();
             return Ok(slot);
         }
+        [HttpPut(nameof(TargetSlot))]
 
-        public async Task<IActionResult> TargetSlot([FromBody] ExecuteLotteryModel executeLotteryModel)
+        public async Task<IActionResult> TargetSlot([FromBody] string slotId)
         {
 
-            var group = await applicationDbContext.LotteryGroups.Where(x => x.DisplayId.ToString() == executeLotteryModel.GroupId).FirstOrDefaultAsync();
+            var group = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).Include(x => x.LotteryGroup).Select(x => x.LotteryGroup).FirstOrDefaultAsync();
+
 
             if (group == null)
             {
                 return NotFound();
             }
 
-            if(applicationDbContext.LotterySlots.Where(x=>x.LotteryGroupId==group.Id&& !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange || x.Status == SlotStatus.Exchange)).Any())
+            if(applicationDbContext.LotterySlots.Where(x=>x.LotteryGroupId==group.Id&& !(x.Status==SlotStatus.ViewResult || x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange || x.Status == SlotStatus.Exchange)).Any())
             {
                 return Conflict();
             }
-            var slot = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == executeLotteryModel.SlotId).FirstOrDefaultAsync();
+
+            var viewedList = applicationDbContext.LotterySlots.Where(x => x.Status == SlotStatus.ViewResult).ToList();
+            foreach(var viewResult in viewedList)
+            {
+                viewResult.Status = SlotStatus.Exchange;
+                applicationDbContext.Update(viewResult);
+                await applicationDbContext.SaveChangesAsync();
+            }
+            var slot = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).FirstOrDefaultAsync();
             if (slot == null)
             {
                 return NotFound();
@@ -63,8 +72,12 @@ namespace Micon.LotterySystem.Controllers
             slot.Status = SlotStatus.DuringAnimation;
             applicationDbContext.Update(slot);
             await applicationDbContext.SaveChangesAsync();
+            await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("SetTarget", slot.DisplayId);
+
             return Ok();
         }
+        [HttpPut(nameof(AnimationExecute))]
+
         public async Task<IActionResult> AnimationExecute([FromBody]string slotId)
         {
             var group = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).Include(x=>x.LotteryGroup).Select(x=>x.LotteryGroup).FirstOrDefaultAsync();
@@ -94,6 +107,8 @@ namespace Micon.LotterySystem.Controllers
             await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("AnimationStart", slot.DisplayId);
             return Ok();
         }
+        [HttpPut(nameof(LotteryExecute))]
+
         public async Task<IActionResult> LotteryExecute([FromBody] string slotId)
         {
             var group = await applicationDbContext.LotterySlots
@@ -149,6 +164,8 @@ namespace Micon.LotterySystem.Controllers
             await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("SubmitLottery", slot.DisplayId);
             return Ok();
         }
+        [HttpPut(nameof(ViewStop))]
+
         public async Task<IActionResult> ViewStop([FromBody] string slotId)
         {
 
@@ -188,6 +205,8 @@ namespace Micon.LotterySystem.Controllers
                 
         }
 
+        [HttpPut(nameof(ExchangeStop))]
+
         public async Task<IActionResult> ExchangeStop([FromBody] string slotId)
         {
             var group = await applicationDbContext.LotterySlots
@@ -204,7 +223,7 @@ namespace Micon.LotterySystem.Controllers
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x => x.Tickets)
                 .FirstOrDefaultAsync();
-            if (slot.Status != SlotStatus.Exchange)
+            if (slot.Status != SlotStatus.Exchange&& slot.Status != SlotStatus.ViewResult)
             {
                 return Conflict();
             }
@@ -224,6 +243,7 @@ namespace Micon.LotterySystem.Controllers
 
             return Ok();
         }
+        [HttpGet(nameof(LotterySlotState))]
 
         public async Task<IActionResult> LotterySlotState([FromQuery] string slotId)
         {
@@ -233,7 +253,7 @@ namespace Micon.LotterySystem.Controllers
                 SlotId = slot.DisplayId.ToString(),
                 Status = slot.Status,
                 Name = slot.Name,
-
+                NumberOfFrames = slot.NumberOfFrames
             };
 
             foreach(var ticket in slot.Tickets)

@@ -1,110 +1,127 @@
-﻿<script>
+﻿<script lang="ts">
     import { onMount } from 'svelte';
+    import { page } from '$app/stores';
 
-    export let prizeLevel = "1等";
-    export let resultNumbers = [
-        "1234", "5678", "9012", "3456", "7890",
-        "1111", "2222", "3333", "4444", "5555",
-        "6666", "7777", "8888", "9999", "0000",
-        "1212", "3434", "5656", "7878", "9090"
-    ].slice(0, 20); // 上限20人
+    const groupId = $page.params.lotteryid;
 
-    let spinning = false;
-    let displayedNumbers = [];
-
-    const digitCount = 4;
-
-    const startDrawing = () => {
-        spinning = true;
-        displayedNumbers = resultNumbers.map(() => Array(digitCount).fill("?"));
-
-        resultNumbers.forEach((number, idx) => {
-            for (let i = 0; i < digitCount; i++) {
-                const interval = setInterval(() => {
-                    displayedNumbers[idx][i] = Math.floor(Math.random() * 10);
-                }, 40 + i * 30);
-
-                setTimeout(() => {
-                    clearInterval(interval);
-                    displayedNumbers[idx][i] = number[i];
-                    if (idx === resultNumbers.length - 1 && i === digitCount - 1) {
-                        spinning = false;
-                    }
-                }, 1000 + idx * 100 + i * 300);
-            }
-        });
+    type LotterySlot = {
+        lotteryId: string;
+        slotId: string | null;
+        name: string | null;
+        merchandise: string | null;
+        numberOfFrames: number;
+        deadLine: string | null;
     };
-</script>
-<style>
-    .container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
 
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 1.5rem;
-        width: 100%;
-        max-width: 1200px;
-        padding: 2rem;
-    }
+    type WinnerTicket = {
+        number: string;
+        status: number;
+    };
 
-    .card {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        padding: 1rem;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        transition: transform 0.3s ease;
-    }
+    type WinningModel = {
+        slotId: string;
+        name: string;
+        tickets: WinnerTicket[];
+        status: number;
+        numberOfFrames: number;
+    };
 
-        .card:hover {
-            transform: scale(1.03);
+    let slots: LotterySlot[] = [];
+    let winningModels: Record<string, WinningModel> = {};
+
+    // LotterySlotデータとWinningModelデータを初期化
+    onMount(async () => {
+        const encodedid = encodeURIComponent(groupId);
+        const res = await fetch(`/api/LotterySlot/List/${encodedid}`);
+        slots = await res.json();
+
+        // 各slotIdに対してWinningModelを取得
+        for (const slot of slots) {
+            if (!slot.slotId) continue;
+
+            const res2 = await fetch(`/api/LotteryExecute/LotterySlotState?slotId=${slot.slotId}`);
+            const model = await res2.json();
+            winningModels[slot.slotId] = model;
         }
+        console.log(winningModels);
+        console.log(slots);
+    });
 
-    .digits {
-        display: flex;
-        gap: 0.4rem;
+    // LotteryActionのラベルを状態によって決定
+    function getLotteryActionLabel(status: number): string | null {
+        switch (status) {
+            case 0:
+                return "抽選対象にする"
+            case 1:
+                return "抽選開始";
+            case 2:
+                return "数値を決定";
+            case 3:
+            case 4:
+                return "再抽選";
+            default:
+                return null;
+        }
+    }
+
+    // 抽選アクション（ボタン押下時の処理）
+    function onLotteryAction(slotId: string) {
+        console.log(`抽選アクション: ${slotId}`);
+        // 必要に応じてAPI呼び出しをここに
+    }
+
+    // 引き換え中止（ボタン押下時の処理）
+    function onStopExchange(slotId: string) {
+        console.log(`引き換え中止: ${slotId}`);
+        // 必要に応じてAPI呼び出しをここに
+    }
+
+    // WinningModelを取得する関数
+    function getWinningModel(slotId: string | null): WinningModel | null {
+        if (!slotId) return null;
+        return winningModels[slotId] ?? null;
+    }
+</script>
+
+<style>
+    .slot {
+        border: 1px solid #ccc;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+    }
+
+    .actions {
         margin-top: 0.5rem;
     }
 
-    .digit {
-        font-size: 2rem;
-        font-weight: bold;
-        width: 2.8rem;
-        height: 2.8rem;
-        line-height: 2.8rem;
-        text-align: center;
-        border: 2px solid #333;
-        border-radius: 6px;
-        background: #f0f0f0;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .label {
-        font-size: 1rem;
-        color: #666;
+    button {
+        margin-right: 1rem;
     }
 </style>
 
-<div class="container">
-    <h2>{prizeLevel} 抽選中！</h2>
+{#each slots as slot}
+<div class="slot">
+    <h3>{slot.name}</h3>
+    <p>商品: {slot.merchandise}</p>
+    <p>枠数: {slot.numberOfFrames}</p>
+    <p>締切: {slot.deadLine ?? "未設定"}</p>
 
-    <div class="grid">
-        {#each displayedNumbers as digits, index}
-        <div class="card">
-            <div class="label">No.{index + 1}</div>
-            <div class="digits">
-                {#each digits as num}
-                <div class="digit">{num}</div>
-                {/each}
-            </div>
-        </div>
-        {/each}
+    {#if slot.slotId}
+    {#if getWinningModel(slot.slotId) as model}
+    <div class="actions">
+        {#if model.status === "Exchange" || model.status === "ViewResult"}
+        <button on:click={() => onStopExchange(slot.slotId)}>引き換えを中止する</button>
+        {/if}
+
+        {#if getLotteryActionLabel(model.status) != null}
+        <button on:click={() =>
+            onLotteryAction(slot.slotId)}>
+            {getLotteryActionLabel(model.status)}
+        </button>
+        {/if}
     </div>
+    {/if}
+    {/if}
 </div>
-
+{/each}
