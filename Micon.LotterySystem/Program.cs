@@ -1,73 +1,80 @@
-
-using Micon.LotterySystem.Handler;
+﻿using Micon.LotterySystem.Handler;
 using Micon.LotterySystem.Models;
+using Micon.LotterySystem.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Micon.LotterySystem.Services;
 using System.Text.Json.Serialization;
+
 namespace Micon.LotterySystem
 {
     public class Program
     {
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);
+            // ✅ 明示的に appsettings.json を読み込むようにする
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                Args = args,
+                ContentRootPath = Directory.GetCurrentDirectory(),
+                EnvironmentName = Environments.Development // ← appsettings.Development.json も対象になる
+            });
 
-            // Add services to the container.
+            // ✅ デバッグ出力（削除してOK）
+            Console.WriteLine("接続文字列: " + builder.Configuration.GetConnectionString("lottery-db"));
 
+            // サービスの登録
             builder.Services.AddControllers().AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
+
             builder.Services.AddScoped<IPasscodeService, PasscodeService>();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
-            builder.Services.AddSwaggerGen();
             builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
+
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db"));
             });
+
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = IdentityConstants.ApplicationScheme;
+                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+            }).AddIdentityCookies();
+
+            builder.Services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.Stores.MaxLengthForKeys = 128;
+                options.User.RequireUniqueEmail = false;
+            })
+            .AddDefaultTokenProviders()
+            .AddRoles<ApplicationRole>()
+            .AddUserManager<UserManager<ApplicationUser>>()
+            .AddSignInManager<SignInManager<ApplicationUser>>()
+            .AddErrorDescriber<JapaneseIdentityErrorDescriber>()
+            .AddEntityFrameworkStores<ApplicationDbContext>();
+
+            // 認可ポリシーの追加
             builder.Services.AddAuthorization(options =>
             {
                 AuthorityScanService authorityScanService = new AuthorityScanService();
-                foreach(var auth in authorityScanService.Authority)
+                foreach (var auth in authorityScanService.Authority)
                 {
                     options.AddPolicy(auth, policy =>
-                    policy.Requirements.Add(new DynamicRoleRequirement(auth)));
+                        policy.Requirements.Add(new DynamicRoleRequirement(auth)));
                 }
-                
-
             });
-            builder.Services.AddAuthentication(option =>
-            {
-                option.DefaultScheme = IdentityConstants.ApplicationScheme;
-                option.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            }).AddIdentityCookies();
 
-            builder.Services.AddIdentityCore<ApplicationUser>(o =>
-            {
-                o.Stores.MaxLengthForKeys = 128;
-                o.User.RequireUniqueEmail = false;
-            })
-                .AddDefaultTokenProviders()
-                .AddRoles<ApplicationRole>()
-                .AddUserManager<UserManager<ApplicationUser>>()
-                .AddSignInManager<SignInManager<ApplicationUser>>()
-                .AddErrorDescriber<JapaneseIdentityErrorDescriber>()
-                .AddEntityFrameworkStores<ApplicationDbContext>();
-            
             var app = builder.Build();
 
-
-            // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -78,36 +85,36 @@ namespace Micon.LotterySystem
             app.UseStaticFiles();
             app.UseRouting();
 
-
             app.UseAuthentication();
-
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // SPA対応：index.html にリダイレクト（/api, /account 以外）
             app.Use(async (context, next) =>
             {
-                // /api �Ŏn�܂郊�N�G�X�g�͂��̂܂܏����𑱍s
-                if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)&& !context.Request.Path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase))
+                if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
+                    && !context.Request.Path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase))
                 {
-                    // index.html �̓��e��ǂݍ���
                     var indexPath = Path.Combine(app.Environment.WebRootPath, "index.html");
                     if (File.Exists(indexPath))
                     {
                         context.Response.ContentType = "text/html";
                         await context.Response.SendFileAsync(indexPath);
-                        return; // index.html ��Ԃ����珈�����I��
+                        return;
                     }
                 }
 
-                await next(); // /api �̏ꍇ�͎��̃~�h���E�F�A��
+                await next();
             });
-            using (var sp = app.Services.CreateScope())
-            {
-                var dbContext = sp.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                dbContext.Database.Migrate();
-                var authorityScanService = sp.ServiceProvider.GetRequiredService<IAuthorityScanService>();
 
+            // マイグレーション実行（開発時のみ）
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                dbContext.Database.Migrate();
             }
+
             app.Run();
         }
     }

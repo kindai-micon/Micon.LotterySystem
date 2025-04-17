@@ -10,6 +10,7 @@ namespace Micon.LotterySystem
         public DbSet<LotterySlots> LotterySlots { get; set; }
         public DbSet<Ticket> Tickets { get; set; }
         public DbSet<Authority> Authorities { get; set; }
+        public DbSet<IssueLog> IssueLogs { get; set; }
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
