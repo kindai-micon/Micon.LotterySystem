@@ -65,11 +65,11 @@
         }
     }
 
-    async function moveSlot(name: string, toIndex: number) {
+    async function moveSlot(id: string, toIndex: number) {
         const res = await fetch('/api/LotterySlot/MoveIndex', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Name: name, Index: toIndex })
+            body: JSON.stringify({ id: id, newIndex: toIndex })
         });
         if (res.ok) await fetchSlots();
     }
@@ -204,16 +204,16 @@
     </div>
     {:else}
     <p><strong>{slot.name}</strong></p>
-    <p>🎁 {slot.merchandise}</p>
-    <p>🎯 枠数: {slot.numberOfFrames}</p>
-    <p>⏰ 締切: {slot.deadLine ? new Date(slot.deadLine).toLocaleString() : '未設定'}</p>
+    <p>景品: {slot.merchandise}</p>
+    <p>枠数: {slot.numberOfFrames}</p>
+    <p>締切: {slot.deadLine ? new Date(slot.deadLine).toLocaleString() : '未設定'}</p>
     <div class="slot-actions">
         <button class="btn" on:click={() => editing[slot.slotId] = true}>編集</button>
         {#if index > 0}
-        <button class="btn" on:click={() => moveSlot(slot.name, index - 1)}>↑ 上へ</button>
+        <button class="btn" on:click={() => moveSlot(slot.slotId, index - 1)}>↑ 上へ</button>
         {/if}
         {#if index < slots.length - 1}
-        <button class="btn" on:click={() => moveSlot(slot.name, index + 1)}>↓ 下へ</button>
+        <button class="btn" on:click={() => moveSlot(slot.slotId, index + 1)}>↓ 下へ</button>
         {/if}
     </div>
     {/if}

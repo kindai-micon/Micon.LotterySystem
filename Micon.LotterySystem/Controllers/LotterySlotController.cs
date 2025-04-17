@@ -102,7 +102,8 @@ namespace Micon.LotterySystem.Controllers
                 .Select(x => x.LotteryGroupId)
                 .FirstOrDefaultAsync();
 
-            var slots = await applicationDbContext.LotterySlots.Where(x => x.LotteryGroup.DisplayId == groupId)
+            var slots = await applicationDbContext.LotterySlots
+                .Where(x => x.LotteryGroupId == groupId)
                 .OrderBy(x => x.Order)
                 .ToListAsync();
 
