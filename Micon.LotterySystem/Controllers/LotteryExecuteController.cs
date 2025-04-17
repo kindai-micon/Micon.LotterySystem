@@ -121,7 +121,7 @@ namespace Micon.LotterySystem.Controllers
             {
                 return Conflict();
             }
-
+            slot.Status = SlotStatus.ViewResult;
             var tickets = await applicationDbContext.Tickets
                 .Where(x => x.LotteryGroupId == group.Id && x.Status == TicketStatus.Valid)
                 .OrderBy(x => x.Id)
@@ -146,7 +146,7 @@ namespace Micon.LotterySystem.Controllers
                 applicationDbContext.Update(ticket);
             }
             
-            await lotteryHubContext.Clients.All.SendAsync("SubmitLottery", slot.DisplayId);
+            await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("SubmitLottery", slot.DisplayId);
             return Ok();
         }
         public async Task<IActionResult> ViewStop([FromBody] string slotId)
@@ -157,26 +157,32 @@ namespace Micon.LotterySystem.Controllers
                 .Include(x=>x.LotteryGroup)
                 .Select(x=>x.LotteryGroup)
                 .FirstOrDefaultAsync();
-            if (applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id && !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange)).Count() != 1)
-            {
-                return Conflict();
-            }
             if (group == null)
             {
                 return NotFound();
             }
+            if (applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id && !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange)).Count() != 1)
+            {
+                return Conflict();
+            }
+
             var slot = await applicationDbContext.LotterySlots
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x => x.Tickets)
                 .FirstOrDefaultAsync();
-
-            if (slot.Status == SlotStatus.ViewResult)
+            if (slot == null)
             {
-                slot.Status = SlotStatus.Exchange; 
+                return NotFound();
             }
+            if (slot.Status != SlotStatus.ViewResult)
+            {
+                return Conflict();
+            }
+            slot.Status = SlotStatus.Exchange;
+
             applicationDbContext.Update(slot);
             await applicationDbContext.SaveChangesAsync();
-            await lotteryHubContext.Clients.All.SendAsync("ViewStop", slot.DisplayId);
+            await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("ViewStop", slot.DisplayId);
 
             return Ok();
                 
@@ -184,11 +190,24 @@ namespace Micon.LotterySystem.Controllers
 
         public async Task<IActionResult> ExchangeStop([FromBody] string slotId)
         {
-
+            var group = await applicationDbContext.LotterySlots
+                .Where(x => x.DisplayId.ToString() == slotId)
+                .Include(x => x.LotteryGroup)
+                .Select(x => x.LotteryGroup)
+                .FirstOrDefaultAsync();
+            if (group == null)
+            {
+                return NotFound();
+            }
+            
             var slot = await applicationDbContext.LotterySlots
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x => x.Tickets)
                 .FirstOrDefaultAsync();
+            if (slot.Status != SlotStatus.Exchange)
+            {
+                return Conflict();
+            }
             var removeList = slot.Tickets.Where(x => x.Status != TicketStatus.Exchanged);
             foreach(var ticket in removeList)
             {
@@ -201,7 +220,7 @@ namespace Micon.LotterySystem.Controllers
 
             applicationDbContext.Update(slot);
             await applicationDbContext.SaveChangesAsync();
-            await lotteryHubContext.Clients.All.SendAsync("ExchangeStop", slot.DisplayId);
+            await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("ExchangeStop", slot.DisplayId);
 
             return Ok();
         }
