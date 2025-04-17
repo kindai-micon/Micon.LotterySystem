@@ -26,8 +26,15 @@
 		<RemoveDir Directories="./wwwroot" />
 	</Target>
 	<ItemGroup>
+	  <TypeScriptCompile Include="micon.lotterysystem.client\src\lib\models\user.ts" />
+	  <TypeScriptCompile Include="micon.lotterysystem.client\src\store\UserStore.ts" />
+	</ItemGroup>
+	<ItemGroup>
 		<Content Update="wwwroot\**" CopyToPublishDirectory="Never" />
 		<Content Update="ClientApp\**" CopyToPublishDirectory="Never" />
+	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="micon.lotterysystem.client\src\routes\tickets-enabled\" />
 	</ItemGroup>
 
 	<Target Name="CopyPublish" AfterTargets="Publish">
