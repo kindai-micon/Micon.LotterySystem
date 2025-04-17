@@ -12,6 +12,6 @@ namespace Micon.LotterySystem.Models
         {
             Name = roleName;
         }
-        public List<Authority> Authorities { get; set; }
+        public List<Authority> Authorities { get; set; } =new List<Authority>();
     }
 }

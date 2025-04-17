@@ -7,8 +7,8 @@ namespace Micon.LotterySystem.Models
         public BaseModel()
         {
             Id = Guid.CreateVersion7();
-            Created = DateTimeOffset.Now;
-            Updated = DateTimeOffset.Now;
+            Created = DateTimeOffset.UtcNow;
+            Updated = DateTimeOffset.UtcNow;
         }
         [Key]
         public Guid Id { get; set; }
