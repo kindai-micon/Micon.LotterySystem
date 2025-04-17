@@ -42,7 +42,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok(sendUser);
         }
 
-        [Authorize]
+        [Authorize(Policy = "UserView")]
         [HttpGet(nameof(UserInfo))]
         public async Task<IActionResult> UserInfo([FromQuery]string userName)
         {
@@ -97,7 +97,7 @@ namespace Micon.LotterySystem.Controllers
                 .ToListAsync();
             return Ok(sendUser);
         }
-
+        [Authorize(Policy = "UserView")]
         [Authorize(Policy = "UserManagement")]
         [HttpPost(nameof(Register))]
         public async Task<IActionResult> Register([FromBody] RegisterModel registerModel)
@@ -184,7 +184,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok();
         }
 
-        [Authorize("UserManagement")]
+        [Authorize(Policy="UserView")]
         [HttpGet(nameof(UserList))]
         public async Task<IActionResult> UserList()
         {
@@ -202,6 +202,7 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok(sendUsers);
         }
+        [Authorize(Policy = "UserView")]
         [Authorize(Policy = "RoleManagement")]
         [HttpPut(nameof(AddRole))]
         public async Task<IActionResult> AddRole([FromBody] UserRoleModel userRoleModel)
@@ -223,7 +224,7 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok();
         }
-
+        [Authorize(Policy = "UserView")]
         [Authorize(Policy = "RoleManagement")]
         [HttpPut(nameof(RemoveRole))]
         public async Task<IActionResult> RemoveRole([FromBody] UserRoleModel userRoleModel)
