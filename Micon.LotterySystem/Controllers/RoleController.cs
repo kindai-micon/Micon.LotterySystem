@@ -83,7 +83,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok(sendRole);
         }
 
-        [Authorize(Policy = "RoleManagement")]
+        [Authorize]
         [HttpGet(nameof(AuthorityList))]
         public async Task<IActionResult> AuthorityList()
         {

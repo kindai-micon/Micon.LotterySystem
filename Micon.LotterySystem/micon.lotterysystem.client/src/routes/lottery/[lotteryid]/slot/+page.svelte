@@ -195,10 +195,10 @@
             <input type="checkbox"
                    bind:checked={noDeadline}
                    on:change={() => {
-            if (slot.noDeadline) {
-            slot.deadLine = "";
+            if (newSlot.noDeadline) {
+            newSlot.deadLine = "";
             } else {
-            slot.deadLine = toDateTimeLocalFormat(new Date().toISOString());
+            newSlot.deadLine = toDateTimeLocalFormat(new Date().toISOString());
             }
             }} />
             締切なし

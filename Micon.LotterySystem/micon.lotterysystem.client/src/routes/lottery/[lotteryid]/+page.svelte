@@ -86,8 +86,13 @@
         </a>
 
         <a class="link-card" href="{lotteryId}/execuete">
+        <a class="link-card" href="{lotteryId}/execute">
             抽選の実行
             <div class="desc">実際に抽選を行い当選者を決定</div>
+        </a>
+        <a class="link-card" href="{lotteryId}/view">
+            抽選の画面
+            <div class="desc">抽選実行中の画面を表示します</div>
         </a>
 
         <a class="link-card" href="{lotteryId}/enable">
