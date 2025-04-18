@@ -37,6 +37,17 @@ namespace Micon.LotterySystem
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db"));
             });
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy(
+                    "AllowAll",
+                    builder =>
+                    {
+                        builder.AllowAnyOrigin()   // すべてのオリジンからのアクセスを許可
+                               .AllowAnyMethod()
+                               .AllowAnyHeader();
+                    });
+            });
             builder.Services.AddAuthorization(options =>
             {
                 AuthorityScanService authorityScanService = new AuthorityScanService();
@@ -75,7 +86,8 @@ namespace Micon.LotterySystem
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+            app.UseCors("AllowAll");
+            app.UseWebSockets();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseRouting();

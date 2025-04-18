@@ -15,9 +15,16 @@ namespace Micon.LotterySystem.Controllers
         [HttpGet(nameof(ExecutingSlotState))]
         public async Task<IActionResult> ExecutingSlotState([FromQuery] string groupId)
         {
+            var groups = applicationDbContext.LotteryGroups.ToList();
             var group = await applicationDbContext.LotteryGroups.Where(x => x.DisplayId.ToString() == groupId).FirstOrDefaultAsync();
+            if (group == null)
+            {
+                return NotFound();
+            }
+            var slots = applicationDbContext.LotterySlots
+                .Where(x => x.LotteryGroupId == group.Id).ToList();
             var slot = await applicationDbContext.LotterySlots
-                .Where(x => x.LotteryGroupId == group.Id && !(x.Status == Models.SlotStatus.TargetLottery || x.Status == SlotStatus.ViewResult || x.Status == SlotStatus.DuringAnimation))
+                .Where(x => x.LotteryGroupId == group.Id && (x.Status == Models.SlotStatus.TargetLottery || x.Status == SlotStatus.ViewResult || x.Status == SlotStatus.DuringAnimation))
                 .Include(x => x.Tickets)
                 .Select(
                 x => new WinningModel()
@@ -69,10 +76,12 @@ namespace Micon.LotterySystem.Controllers
             {
                 return Conflict();
             }
-            slot.Status = SlotStatus.DuringAnimation;
+            slot.Status = SlotStatus.TargetLottery;
             applicationDbContext.Update(slot);
             await applicationDbContext.SaveChangesAsync();
-            await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("SetTarget", slot.DisplayId);
+            
+            //Console.WriteLine(lotteryHubContext.Clients.Group(group.DisplayId.ToString()));
+            await lotteryHubContext.Clients.All.SendAsync("SetTarget", slot.DisplayId.ToString());
 
             return Ok();
         }
@@ -146,7 +155,11 @@ namespace Micon.LotterySystem.Controllers
                 return NotFound();
             }
 
-            long count = slot.NumberOfFrames - slot.Tickets.Count;
+            long count =slot.NumberOfFrames - slot.Tickets.Count;
+            if(tickets.Count < count)
+            {
+                count = tickets.Count;
+            }
             HashSet<Ticket> winner = new HashSet<Ticket>();
             while(winner.Count < count)
             {

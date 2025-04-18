@@ -15,7 +15,7 @@
     const lotteryId = $page.params.lotteryid;
 
     const fetchWinningModel = async () => {
-        const response = await fetch('/api/LotteryExecute');
+        const response = await fetch('/api/LotteryExecute/ExecutingSlotState?groupId='+lotteryId);
         const data = await response.json();
 
         prizeLevel = data.name;
@@ -63,6 +63,41 @@
             .withAutomaticReconnect()
             .build();
 
+
+        connection.on("SetTarget", async (id) => {
+            try {
+                await fetchWinningModel();
+                visible = true;
+                console.log("SetTarget");
+            } catch (error) {
+                console.error("Error in fetchWinningModel:", error);
+            }
+        });
+
+        connection.on("AnimationStart", (id) => {
+            startDrawing();
+            console.log("AnimationStart");
+
+        });
+
+        connection.on("SubmitLottery", async (id) => {
+            await fetchWinningModel(); // 確定情報で再取得
+            stopDrawing();
+            console.log("SubmitLottery");
+            
+        });
+
+        connection.on("ViewStop", (id) => {
+            visible = false;
+            console.log("ViewStop");
+            
+        });
+
+        connection.on("ExchangeStop", (id) => {
+            // 必要に応じて処理追加
+            console.log("ExchangeStop");
+
+        });
         connection.start().then(() => {
             console.log("SignalR connected");
             connection.invoke("SetLotteryGroup", lotteryId)
@@ -70,27 +105,6 @@
                 .catch(err => console.error("SetLotteryGroup error:", err));
         }).catch(err => console.error("SignalR connection error:", err));
 
-        connection.on("SetTarget", async () => {
-            await fetchWinningModel();
-            visible = true;
-        });
-
-        connection.on("AnimationStart", () => {
-            startDrawing();
-        });
-
-        connection.on("SubmitLottery", async () => {
-            await fetchWinningModel(); // 確定情報で再取得
-            stopDrawing();
-        });
-
-        connection.on("ViewStop", () => {
-            visible = false;
-        });
-
-        connection.on("ExchangeStop", () => {
-            // 必要に応じて処理追加
-        });
     });
 </script>
 

@@ -29,13 +29,13 @@
     let slots: LotterySlot[] = [];
     let winningModels: Record<string, WinningModel> = {};
 
-    // LotterySlotデータとWinningModelデータを初期化
+    let loaded = false;
+
     onMount(async () => {
         const encodedid = encodeURIComponent(groupId);
         const res = await fetch(`/api/LotterySlot/List/${encodedid}`);
         slots = await res.json();
 
-        // 各slotIdに対してWinningModelを取得
         for (const slot of slots) {
             if (!slot.slotId) continue;
 
@@ -43,8 +43,8 @@
             const model = await res2.json();
             winningModels[slot.slotId] = model;
         }
-        console.log(winningModels);
-        console.log(slots);
+
+        loaded = true;
     });
 
     // LotteryActionのラベルを状態によって決定
@@ -65,15 +65,45 @@
     }
 
     // 抽選アクション（ボタン押下時の処理）
-    function onLotteryAction(slotId: string) {
+    async function onLotteryAction(slotId: string, status:number) {
         console.log(`抽選アクション: ${slotId}`);
+        console.log(status);
+        let actiontype = ""
+        switch (status) {
+            case 0:
+                actiontype = "TargetSlot";
+                break;
+            case 1:
+                actiontype = "AnimationExecute";
+                break;
+            case 2:
+                actiontype = "LotteryExecute";
+                break;
+            case 3:
+            case 4:
+                actiontype = "ExchangeStop";
+                break;
+            default:
+                return null;
+        }
+
+        console.log(actiontype);
+         await fetch(`/api/LotteryExecute/${actiontype}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify( slotId )
+        });
         // 必要に応じてAPI呼び出しをここに
     }
 
     // 引き換え中止（ボタン押下時の処理）
-    function onStopExchange(slotId: string) {
+    async function onStopExchange(slotId: string) {
         console.log(`引き換え中止: ${slotId}`);
-        // 必要に応じてAPI呼び出しをここに
+        await fetch(`/api/LotteryExecute/ExchangeStop`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(slotId)
+        });
     }
 
     // WinningModelを取得する関数
@@ -100,28 +130,31 @@
     }
 </style>
 
-{#each slots as slot}
+{#if loaded}
+  {#each slots as slot}
 <div class="slot">
     <h3>{slot.name}</h3>
     <p>商品: {slot.merchandise}</p>
     <p>枠数: {slot.numberOfFrames}</p>
     <p>締切: {slot.deadLine ?? "未設定"}</p>
 
-    {#if slot.slotId}
-    {#if getWinningModel(slot.slotId) as model}
+    {#if slot.slotId && getWinningModel(slot.slotId) }
     <div class="actions">
-        {#if model.status === "Exchange" || model.status === "ViewResult"}
-        <button on:click={() => onStopExchange(slot.slotId)}>引き換えを中止する</button>
+        {#if getWinningModel(slot.slotId).status === "Exchange" || getWinningModel(slot.slotId) .status === "ViewResult"}
+        <button on:click={async() => await onStopExchange(slot.slotId)}>引き換えを中止する</button>
         {/if}
 
-        {#if getLotteryActionLabel(model.status) != null}
-        <button on:click={() =>
-            onLotteryAction(slot.slotId)}>
-            {getLotteryActionLabel(model.status)}
+        {#if getLotteryActionLabel(getWinningModel(slot.slotId).status) != null}
+        <button on:click={async() =>
+            await onLotteryAction(slot.slotId,getWinningModel(slot.slotId).status)}>
+            {getLotteryActionLabel(getWinningModel(slot.slotId).status)}
         </button>
         {/if}
     </div>
     {/if}
-    {/if}
 </div>
-{/each}
+  {/each}
+{:else}
+<p>読み込み中...</p>
+{/if}
+
