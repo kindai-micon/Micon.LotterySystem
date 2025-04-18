@@ -1,16 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Micon.LotterySystem.Models
+namespace Micon.LotterySystem.Models.API
 {
-    public class LotteryGroup:BaseModel
+    public class LotteryGroup
     {
-        public Guid DisplayId { get; set; } = Guid.CreateVersion7();
-
         public string Name { get; set; }
         public List<Ticket> Tickets { get; set; }
         public List<LotterySlots> LotterySlots { get; set; }
-        [ForeignKey(nameof(TicketInfo))]
         public Guid TicketInfoId { get; set; }
-        public TicketInfo TicketInfo { get; set; } 
+        public TicketInfo TicketInfo { get; set; }
     }
 }

@@ -1,15 +1,15 @@
-
-using Micon.LotterySystem.Handler;
+ï»¿using Micon.LotterySystem.Handler;
 using Micon.LotterySystem.Models;
+using Micon.LotterySystem.Services;
+using Micon.LotterySystem.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
-using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Micon.LotterySystem.Services;
+using System.IO;
+using System.Text.Json.Serialization;
+
 namespace Micon.LotterySystem
 {
     public class Program
@@ -18,92 +18,118 @@ namespace Micon.LotterySystem
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // JSONãƒ«ãƒ¼ãƒ—é˜²æ­¢ãªã©
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                });
 
-            builder.Services.AddControllers();
-            builder.Services.AddScoped<IPasscodeService, PasscodeService>();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
-            builder.Services.AddSwaggerGen();
-            builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
+            // DBæ¥ç¶š
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db")));
+
+            // SignalR
+            builder.Services.AddSignalR();
+
+            // CORS
+            builder.Services.AddCors(options =>
             {
-                options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db"));
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
             });
+
+            // èªè¨¼ (Authentication)
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = IdentityConstants.ApplicationScheme;
+                options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+            })
+            .AddIdentityCookies();
+
+            // Identityãƒ¦ãƒ¼ã‚¶ãƒ¼ç®¡ç†
+            builder.Services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.Stores.MaxLengthForKeys = 128;
+                options.User.RequireUniqueEmail = false;
+            })
+            .AddRoles<ApplicationRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders()
+            .AddUserManager<UserManager<ApplicationUser>>()
+            .AddSignInManager<SignInManager<ApplicationUser>>()
+            .AddErrorDescriber<JapaneseIdentityErrorDescriber>();
+
+            // ã‚µãƒ¼ãƒ“ã‚¹ç™»éŒ²
+            builder.Services.AddScoped<IPasscodeService, PasscodeService>();
+            builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
+            builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
+
+            // èªå¯ (Authorization)
             builder.Services.AddAuthorization(options =>
             {
-                AuthorityScanService authorityScanService = new AuthorityScanService();
-                foreach(var auth in authorityScanService.Authority)
+                var scanner = new AuthorityScanService();
+                foreach (var auth in scanner.Authority)
                 {
                     options.AddPolicy(auth, policy =>
-                    policy.Requirements.Add(new DynamicRoleRequirement(auth)));
+                        policy.Requirements.Add(new DynamicRoleRequirement(auth)));
                 }
-                
-
             });
-            builder.Services.AddAuthentication(option =>
-            {
-                option.DefaultScheme = IdentityConstants.ApplicationScheme;
-                option.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            }).AddIdentityCookies();
 
-            builder.Services.AddIdentityCore<ApplicationUser>(o =>
-            {
-                o.Stores.MaxLengthForKeys = 128;
-                o.User.RequireUniqueEmail = false;
-            })
-                .AddDefaultTokenProviders()
-                .AddRoles<ApplicationRole>()
-                .AddUserManager<UserManager<ApplicationUser>>()
-                .AddSignInManager<SignInManager<ApplicationUser>>()
-                .AddErrorDescriber<JapaneseIdentityErrorDescriber>()
-                .AddEntityFrameworkStores<ApplicationDbContext>();
-            
+            // Swagger
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
+
             var app = builder.Build();
 
-
-            // Configure the HTTP request pipeline.
+            // é–‹ç™ºæ™‚ã®ã¿ Swagger UI ã‚’æœ‰åŠ¹åŒ–
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
+            app.UseCors("AllowAll");
+            app.UseWebSockets();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseRouting();
 
-
             app.UseAuthentication();
-
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<LotteryHub>("/api/lotteryHub");  // ãƒ€ãƒ–ãƒ«ã‚¯ã‚©ãƒ¼ãƒˆã«ä¿®æ­£
+
+            // SPA fallback
             app.Use(async (context, next) =>
             {
-                // /api ‚Ån‚Ü‚éƒŠƒNƒGƒXƒg‚Í‚»‚Ì‚Ü‚Üˆ—‚ğ‘±s
-                if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)&& !context.Request.Path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase))
+                if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
+                    && !context.Request.Path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase))
                 {
-                    // index.html ‚Ì“à—e‚ğ“Ç‚İ‚Ş
                     var indexPath = Path.Combine(app.Environment.WebRootPath, "index.html");
                     if (File.Exists(indexPath))
                     {
                         context.Response.ContentType = "text/html";
                         await context.Response.SendFileAsync(indexPath);
-                        return; // index.html ‚ğ•Ô‚µ‚½‚çˆ—‚ğI—¹
+                        return;
                     }
                 }
 
-                await next(); // /api ‚Ìê‡‚ÍŸ‚Ìƒ~ƒhƒ‹ƒEƒFƒA‚Ö
+                await next();
             });
-            using (var sp = app.Services.CreateScope())
-            {
-                var dbContext = sp.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                dbContext.Database.Migrate();
-                var authorityScanService = sp.ServiceProvider.GetRequiredService<IAuthorityScanService>();
 
+            // ãƒã‚¤ã‚°ãƒ¬ãƒ¼ã‚·ãƒ§ãƒ³è‡ªå‹•é©ç”¨ï¼ˆé–‹ç™ºç’°å¢ƒãªã©ã§ï¼‰
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                dbContext.Database.Migrate();
             }
+
             app.Run();
         }
     }
