@@ -85,7 +85,10 @@
                 await Load();
                 loaded = true;
             });
-
+            connection.on("UpdateStatus", async (id) => {
+                await Load();
+                loaded = true;
+            });
             connection.on("AnimationStart", async (id) => {
                 await Load();
                 loaded = true;
@@ -182,8 +185,9 @@
             case 2:
                 return "数値を決定";
             case 3:
+                return "表示を止める";
             case 4:
-                return "再抽選";
+                return "受付を停止し再抽選";
             case 5:
                 return "抽選対象にする"
             default:
@@ -210,6 +214,8 @@
                 actiontype = "LotteryExecute";
                 break;
             case 3:
+                actiontype = "ViewStop";
+                break;
             case 4:
                 actiontype = "ExchangeStop";
                 break;

@@ -3,69 +3,122 @@
     import { page } from '$app/stores';
 
     let connection;
-    let prizeLevel = "1等";
-    let resultNumbers = [];        // アニメーション対象
-    let exchangedNumbers = [];     // 引き換え済み
+    let prizeLevel = "";
+    let resultNumbers = [];
+    let exchangedNumbers = [];
     let spinning = false;
     let displayedNumbers = [];
-    let visible = true;
+    let visible = false;
 
     const digitCount = 4;
     let intervals = [];
     const lotteryId = $page.params.lotteryid;
-
     const fetchWinningModel = async () => {
-        const response = await fetch('/api/LotteryExecute/ExecutingSlotState?groupId='+lotteryId);
+        const response = await fetch('/api/LotteryExecute/ExecutingSlotState?groupId=' + lotteryId);
         const data = await response.json();
 
         prizeLevel = data.name;
-        console.log(data);
 
-        console.log(data.tickets);
+        const frameCount = data.numberOfFrames;
+        const allTickets = data.tickets || [];
+        if (data.status == 2) {
+            startDrawing();
+        }
+        // 初期表示は全て "-" で埋める
+        displayedNumbers = Array.from({ length: frameCount }, () =>
+            Array(digitCount).fill("-")
+        );
 
-        const allTickets = data.tickets.slice(0, data.numberOfFrames);
-        console.log(allTickets);
+        // 確定済み番号 (status === 2)
         resultNumbers = allTickets
             .filter(t => t.status === 2)
-            .map(t => t.number);
+            .map(t => t.number.toString().padStart(digitCount, '0'));
 
+        // 確定している枠にだけ番号を表示
+        allTickets.forEach((t, index) => {
+            if (t.status === 2) {
+                const digits = t.number.toString().padStart(digitCount, '0').split('');
+                displayedNumbers[index] = digits;
+            }
+        });
+
+        // 引換済み枠（別枠として下に表示）
         exchangedNumbers = allTickets
             .filter(t => t.status === 4)
-            .map(t => t.number);
-
-        displayedNumbers = resultNumbers.map(() => num.toString().slice(-4).split(''));
+            .map(t => t.number.toString().padStart(digitCount, '0').split(''));
     };
+
 
     const startDrawing = () => {
         spinning = true;
-        displayedNumbers = resultNumbers.map(() => Array(digitCount).fill("?"));
+
+        // 表示枠数だけ "?" を用意（初期状態）
+
+
+        intervals.forEach(({ interval }) => clearInterval(interval)); // 既存をクリア
         intervals = [];
 
-        resultNumbers.forEach((number, idx) => {
+        displayedNumbers.forEach((_, idx) => {
             for (let i = 0; i < digitCount; i++) {
                 const interval = setInterval(() => {
-                    displayedNumbers[idx][i] = Math.floor(Math.random() * 10);
-                }, 40 + i * 30);
+                    displayedNumbers[idx][i] = Math.floor(Math.random() * 10).toString();
+                }, 40 + i * 30); // 少しずつズレるとスロット感が出る
                 intervals.push({ idx, i, interval });
             }
         });
     };
 
     const stopDrawing = () => {
-        intervals.forEach(({ idx, i, interval }) => {
-            clearInterval(interval);
-            displayedNumbers[idx][i] = resultNumbers[idx][i];
-        });
+        intervals.forEach(({ interval }) => clearInterval(interval));
         intervals = [];
+
+        // 確定番号で表示を上書き
+        displayedNumbers = resultNumbers.map(num =>
+            num.toString().padStart(digitCount, '0').split('')
+        );
+
         spinning = false;
     };
+    async function handleGroupChange(newGroupId) {
+        console.log(`URL changed: new groupId = ${newGroupId}, previous = ${prevGroupId}`);
+        prevGroupId = newGroupId;
 
-    onMount(() => {
+        try {
+            // 接続状態をチェックし、接続されている場合のみinvokeを実行
+            if (connection.state === "Connected") {
+                await connection.invoke("RemoveLotteryGroup", newGroupId);
+
+                await connection.invoke("SetLotteryGroup", newGroupId);
+
+                console.log("SetLotteryGroup invoked after URL change");
+                await Load();
+            } else {
+                console.log("Connection not ready, waiting...");
+                // 接続が確立していない場合は、接続状態が変わるのを待つ
+                connection.onreconnected = async () => {
+                    await connection.invoke("RemoveLotteryGroup", newGroupId);
+                    await connection.invoke("SetLotteryGroup", newGroupId);
+
+                    await Load();
+                };
+            }
+        } catch (err) {
+            console.error("Error during group change:", err);
+        }
+    }
+
+    onMount(async () => {
+        try {
+            await fetchWinningModel();
+            visible = true;
+            console.log("SetTarget");
+        } catch (error) {
+            console.error("Error in fetchWinningModel:", error);
+        }
         connection = new window.signalR.HubConnectionBuilder()
             .withUrl("/api/LotteryHub")
             .withAutomaticReconnect()
             .build();
-
 
         connection.on("SetTarget", async (id) => {
             try {
@@ -77,37 +130,43 @@
             }
         });
 
-        connection.on("AnimationStart", (id) => {
+        connection.on("AnimationStart", () => {
             startDrawing();
             console.log("AnimationStart");
-
         });
 
-        connection.on("SubmitLottery", async (id) => {
-            await fetchWinningModel(); // 確定情報で再取得
+        connection.on("UpdateStatus", async (id) => {
+            try {
+                await fetchWinningModel();
+                visible = true;
+                console.log("UpdateStatus");
+            } catch (error) {
+                console.error("Error in fetchWinningModel:", error);
+            }
+        });
+        connection.on("SubmitLottery", async () => {
+            await fetchWinningModel();
             stopDrawing();
             console.log("SubmitLottery");
-            
         });
 
-        connection.on("ViewStop", (id) => {
+        connection.on("ViewStop", () => {
             visible = false;
             console.log("ViewStop");
-            
+
         });
 
-        connection.on("ExchangeStop", (id) => {
-            // 必要に応じて処理追加
+        connection.on("ExchangeStop", () => {
+            visible = false;
             console.log("ExchangeStop");
-
         });
+
         connection.start().then(() => {
             console.log("SignalR connected");
             connection.invoke("SetLotteryGroup", lotteryId)
                 .then(() => console.log("SetLotteryGroup invoked"))
                 .catch(err => console.error("SetLotteryGroup error:", err));
         }).catch(err => console.error("SignalR connection error:", err));
-
     });
 </script>
 
@@ -167,7 +226,7 @@
         color: #666;
     }
 </style>
-
+<h1>抽選結果画面</h1>
 {#if visible}
 <div class="container">
     <h2>{prizeLevel} 抽選中！</h2>
@@ -196,5 +255,7 @@
         {/each}
     </div>
 </div>
+{:else}
+<h2>現在抽選中のものはありません</h2>
 {/if}
 
