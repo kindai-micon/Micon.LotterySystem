@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Micon.LotterySystem.Services;
 using System.Text.Json.Serialization;
 using Micon.LotterySystem.Hubs;
+using Microsoft.AspNetCore.HttpOverrides;
 namespace Micon.LotterySystem
 {
     public class Program
@@ -79,7 +80,10 @@ namespace Micon.LotterySystem
             
             var app = builder.Build();
 
-
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
