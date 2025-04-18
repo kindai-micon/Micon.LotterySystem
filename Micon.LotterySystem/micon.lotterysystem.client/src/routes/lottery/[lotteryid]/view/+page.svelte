@@ -19,18 +19,21 @@
         const data = await response.json();
 
         prizeLevel = data.name;
+        console.log(data);
+
+        console.log(data.tickets);
 
         const allTickets = data.tickets.slice(0, data.numberOfFrames);
-
+        console.log(allTickets);
         resultNumbers = allTickets
-            .filter(t => t.status === "Winner")
+            .filter(t => t.status === 2)
             .map(t => t.number);
 
         exchangedNumbers = allTickets
-            .filter(t => t.status === "Exchanged")
+            .filter(t => t.status === 4)
             .map(t => t.number);
 
-        displayedNumbers = resultNumbers.map(() => Array(digitCount).fill("?"));
+        displayedNumbers = resultNumbers.map(() => num.toString().slice(-4).split(''));
     };
 
     const startDrawing = () => {

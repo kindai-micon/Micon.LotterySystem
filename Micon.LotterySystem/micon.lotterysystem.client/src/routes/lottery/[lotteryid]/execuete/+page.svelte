@@ -1,8 +1,10 @@
 ﻿<script lang="ts">
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import { page } from '$app/stores';
 
-    const groupId = $page.params.lotteryid;
+    // ページのパラメータが変わったら反応するために$pageを監視
+    $: currentGroupId = $page.params.lotteryid;
+    let prevGroupId = null;
 
     type LotterySlot = {
         lotteryId: string;
@@ -30,22 +32,145 @@
     let winningModels: Record<string, WinningModel> = {};
 
     let loaded = false;
+    let connection;
+    let connectionReady = false;
+
+    // URLパラメータ（groupId）が変更されたときに反応する
+    $: if (currentGroupId && currentGroupId !== prevGroupId && connectionReady) {
+        handleGroupChange(currentGroupId);
+    }
+
+    async function handleGroupChange(newGroupId) {
+        console.log(`URL changed: new groupId = ${newGroupId}, previous = ${prevGroupId}`);
+        prevGroupId = newGroupId;
+
+        try {
+            // 接続状態をチェックし、接続されている場合のみinvokeを実行
+            if (connection.state === "Connected") {
+                await connection.invoke("RemoveLotteryGroup", newGroupId);
+
+                await connection.invoke("SetLotteryGroup", newGroupId);
+
+                console.log("SetLotteryGroup invoked after URL change");
+                await Load();
+            } else {
+                console.log("Connection not ready, waiting...");
+                // 接続が確立していない場合は、接続状態が変わるのを待つ
+                connection.onreconnected = async () => {
+                    await connection.invoke("RemoveLotteryGroup", newGroupId);
+                    await connection.invoke("SetLotteryGroup", newGroupId);
+
+                    await Load();
+                };
+            }
+        } catch (err) {
+            console.error("Error during group change:", err);
+        }
+    }
 
     onMount(async () => {
-        const encodedid = encodeURIComponent(groupId);
-        const res = await fetch(`/api/LotterySlot/List/${encodedid}`);
-        slots = await res.json();
+        try {
+            // 既存の接続があれば停止
+            if (connection) {
+                await connection.stop();
+                console.log("Stopped existing connection");
+            }
 
-        for (const slot of slots) {
-            if (!slot.slotId) continue;
+            connection = new window.signalR.HubConnectionBuilder()
+                .withUrl("/api/LotteryHub")
+                .withAutomaticReconnect()
+                .build();
 
-            const res2 = await fetch(`/api/LotteryExecute/LotterySlotState?slotId=${slot.slotId}`);
-            const model = await res2.json();
-            winningModels[slot.slotId] = model;
+            connection.on("SetTarget", async (id) => {
+                await Load();
+                loaded = true;
+            });
+
+            connection.on("AnimationStart", async (id) => {
+                await Load();
+                loaded = true;
+                console.log("AnimationStart");
+            });
+
+            connection.on("SubmitLottery", async (id) => {
+                await Load();
+                loaded = true;
+                console.log("SubmitLottery");
+            });
+
+            connection.on("ViewStop", async (id) => {
+                await Load();
+                loaded = true;
+                console.log("ViewStop");
+            });
+            connection.on("ExchangeStop", async (id) => {
+                await Load();
+                loaded = true;
+                console.log("ViewStop")
+            })
+
+            // 重複したイベントハンドラを削除（2回ViewStopが登録されていた）
+
+            // 接続が確立したときに実行
+            connection.onreconnected = async (connectionId) => {
+                console.log("Reconnected with ID:", connectionId);
+                if (currentGroupId) {
+                    await connection.invoke("SetLotteryGroup", currentGroupId);
+                    await Load();
+                }
+            };
+
+            await connection.start();
+            console.log("SignalR connected");
+            connectionReady = true;
+
+            // 初期接続時にグループIDを設定
+            prevGroupId = currentGroupId;
+            await connection.invoke("SetLotteryGroup", currentGroupId);
+            console.log("SetLotteryGroup invoked initially");
+
+            await Load();
+            loaded = true;
+        } catch (err) {
+            console.error("SignalR connection setup error:", err);
+            loaded = true; // エラーがあっても表示されるようにする
         }
-
-        loaded = true;
     });
+
+    onDestroy(() => {
+        // コンポーネントがアンマウントされるときに接続を閉じる
+        if (connection) {
+            connection.stop()
+                .then(() => console.log("SignalR connection stopped"))
+                .catch(err => console.error("Error stopping SignalR connection:", err));
+        }
+    });
+
+    async function Load() {
+        try {
+            const encodedid = encodeURIComponent(currentGroupId);
+            const res = await fetch(`/api/LotterySlot/List/${encodedid}`);
+            const fetchedSlots = await res.json();
+
+            const newWinningModels: Record<string, WinningModel> = {};
+            for (const slot of fetchedSlots) {
+                if (!slot.slotId) continue;
+                const res2 = await fetch(`/api/LotteryExecute/LotterySlotState?slotId=${slot.slotId}`);
+                const model = await res2.json();
+                newWinningModels[slot.slotId] = model;
+            }
+
+            // ここで一括代入（reactive トリガー）
+            slots = fetchedSlots;
+            winningModels = newWinningModels;
+            loaded = true;
+
+            console.log("Loaded (via SignalR):", slots, winningModels);
+        } catch (error) {
+            console.error("Error loading data:", error);
+            loaded = true; // エラーがあっても表示されるようにする
+        }
+    }
 
     // LotteryActionのラベルを状態によって決定
     function getLotteryActionLabel(status: number): string | null {
@@ -59,18 +184,23 @@
             case 3:
             case 4:
                 return "再抽選";
+            case 5:
+                return "抽選対象にする"
             default:
+
                 return null;
         }
     }
 
     // 抽選アクション（ボタン押下時の処理）
-    async function onLotteryAction(slotId: string, status:number) {
+    async function onLotteryAction(slotId: string, status: number) {
         console.log(`抽選アクション: ${slotId}`);
         console.log(status);
         let actiontype = ""
         switch (status) {
             case 0:
+            case 5:
+
                 actiontype = "TargetSlot";
                 break;
             case 1:
@@ -88,10 +218,10 @@
         }
 
         console.log(actiontype);
-         await fetch(`/api/LotteryExecute/${actiontype}`, {
+        await fetch(`/api/LotteryExecute/${actiontype}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify( slotId )
+            body: JSON.stringify(slotId)
         });
         // 必要に応じてAPI呼び出しをここに
     }
@@ -111,6 +241,18 @@
         if (!slotId) return null;
         return winningModels[slotId] ?? null;
     }
+
+    // チケットのステータスに応じた背景色クラスを返す関数
+    function getTicketStatusClass(status: number): string {
+        switch (status) {
+            case 2:
+                return 'status-green';
+            case 3:
+                return 'status-blue';
+            default:
+                return '';
+        }
+    }
 </script>
 
 <style>
@@ -128,6 +270,29 @@
     button {
         margin-right: 1rem;
     }
+
+    .tickets-container {
+        margin-top: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .ticket {
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-width: 60px;
+        text-align: center;
+    }
+
+    .status-green {
+        background-color: #90ee90; /* 緑色 */
+    }
+
+    .status-blue {
+        background-color: #a9c5e9; /* くすんだ青色 */
+    }
 </style>
 
 {#if loaded}
@@ -138,15 +303,28 @@
     <p>枠数: {slot.numberOfFrames}</p>
     <p>締切: {slot.deadLine ?? "未設定"}</p>
 
-    {#if slot.slotId && getWinningModel(slot.slotId) }
+    {#if slot.slotId && getWinningModel(slot.slotId)}
+    {#if getWinningModel(slot.slotId).tickets && getWinningModel(slot.slotId).tickets.length > 0}
+    <div>
+        <h4>チケット一覧</h4>
+        <div class="tickets-container">
+            {#each getWinningModel(slot.slotId).tickets as ticket}
+            <div class="ticket {getTicketStatusClass(ticket.status)}">
+                {ticket.number}
+            </div>
+            {/each}
+        </div>
+    </div>
+    {/if}
+
     <div class="actions">
-        {#if getWinningModel(slot.slotId).status === "Exchange" || getWinningModel(slot.slotId) .status === "ViewResult"}
+        {#if getWinningModel(slot.slotId).status === 4 || getWinningModel(slot.slotId).status === 3}
         <button on:click={async() => await onStopExchange(slot.slotId)}>引き換えを中止する</button>
         {/if}
 
         {#if getLotteryActionLabel(getWinningModel(slot.slotId).status) != null}
         <button on:click={async() =>
-            await onLotteryAction(slot.slotId,getWinningModel(slot.slotId).status)}>
+            await onLotteryAction(slot.slotId, getWinningModel(slot.slotId).status)}>
             {getLotteryActionLabel(getWinningModel(slot.slotId).status)}
         </button>
         {/if}
@@ -157,4 +335,3 @@
 {:else}
 <p>読み込み中...</p>
 {/if}
-
