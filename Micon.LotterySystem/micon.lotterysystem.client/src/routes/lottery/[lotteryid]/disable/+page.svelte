@@ -12,8 +12,9 @@
 	let errorMessage = '';
 
 	let isScanning = false;
-	let showActivateButton = false;
+	let showDeactivateButton = false;
 
+	// QRはGUIDなのでnumberではなくGUIDを送る
 	const lotteryId = $page.params.lotteryid;
 
 	/** スキャン開始 */
@@ -24,7 +25,7 @@
 	scannedGuid = null;
 	ticketNumber = null;
 	ticketStatus = null;
-	showActivateButton = false;
+	showDeactivateButton = false;
 
 	isScanning = true;
 
@@ -59,15 +60,16 @@
 	/** チケット状態を取得して UI を制御 */
 	async function checkTicketStatus() {
 	try {
-	const res = await fetch(/api/ticket/${scannedGuid});
+	const res = await fetch(`/api/ticket/${scannedGuid}`);
 	if (!res.ok) throw new Error();
 	const data = await res.json();
 	ticketNumber = data.number;
 	ticketStatus = data.status;
-	showActivateButton = (ticketStatus === 'Invalid');
+	// 無効化可能ならボタン表示
+	showDeactivateButton = (ticketStatus === 'Valid');
 
-	if (!showActivateButton) {
-	// すでに有効なら再スキャン
+	if (!showDeactivateButton) {
+	// すでに無効なら再スキャン
 	scheduleRestart();
 	}
 	} catch {
@@ -76,16 +78,16 @@
 	}
 	}
 
-	/** 有効化 */
-	async function activateTicket() {
+	/** 無効化 */
+	async function deactivateTicket() {
 	try {
-	const res = await fetch(/api/ticket/activate/${scannedGuid}, { method: 'POST' });
+	const res = await fetch(`/api/ticket/deactivate/${scannedGuid}`, { method: 'POST' });
 	if (!res.ok) throw new Error();
-	ticketStatus = 'Valid';
-	showActivateButton = false;
-	errorMessage = '抽選券を有効化しました';
+	ticketStatus = 'Invalid';
+	showDeactivateButton = false;
+	errorMessage = '抽選券を無効化しました';
 	} catch {
-	errorMessage = '有効化に失敗しました';
+	errorMessage = '無効化に失敗しました';
 	} finally {
 	scheduleRestart();
 	}
@@ -93,10 +95,10 @@
 
 	/** 自動再スキャン予約 */
 	function scheduleRestart() {
-	// 1.5秒後に再スキャン
+	// 0.5秒後に再スキャン
 	setTimeout(() => {
 	startScanner();
-	}, 1500);
+	}, 500);
 	}
 
 	onMount(() => {
@@ -138,22 +140,22 @@
 	}
 </style>
 
-<h1>抽選券の有効化</h1>
+<h1>抽選券の無効化</h1>
 <div id="reader" bind:this={qrReaderEl}></div>
 
 <div class="card">
 	<p>抽選券のQRコードをカメラに写してください</p>
 	{#if ticketNumber !== null}
 	<h2>抽選番号: No.{ticketNumber}</h2>
-	<p>状態: {ticketStatus === 'Valid' ? 'すでに有効です' : '現在は無効です'}</p>
+	<p>状態: {ticketStatus === 'Invalid' ? 'すでに無効です' : '現在は有効です'}</p>
 	{/if}
 
 	{#if errorMessage}
 	<p class="error">{errorMessage}</p>
 	{/if}
 
-	{#if showActivateButton}
-	<button class="button" on:click={activateTicket}>抽選券を有効化</button>
+	{#if showDeactivateButton}
+	<button class="button" on:click={deactivateTicket}>抽選券を無効化</button>
 	{/if}
 
 	<!-- 手動で再スキャンしたい場合のボタン -->
