@@ -112,12 +112,26 @@
 </script>
 
 
-<style>
+<style>	
     .container {
         display: flex;
         flex-direction: column;
         align-items: center;
     }
+	
+	p {
+	    text-align: center;
+	}
+	
+	.result {
+	    text-align: center;
+		font-size: 2rem;
+		font-weight: bold;
+	}
+	
+	.heading {
+	    font-weight: bold;
+	}
 
     .grid {
         display: grid;
@@ -170,7 +184,19 @@
 
 {#if visible}
 <div class="container">
-	<h2>あなたの当選番号は？</h2>
+	<h2>あなたの抽選結果</h2>
+	<p class="result">当選！</p>
+
+	<div>
+		<p class="heading">あなたの抽選券番号</p>
+		<p>1234567</p>
+	</div>
+
+	<p>
+		<!-- TODO: ページ遷移先を変更 -->
+		<a href="/login">当選番号の結果はこちら</a>
+	</p>
+	
     <div class="grid">
         {#each displayedNumbers as digits, index}
         <div class="card">
@@ -193,6 +219,6 @@
             </div>
         </div>
         {/each}
-    </div>-->
+    </div>
 </div>
 {/if}

@@ -22,7 +22,7 @@
     });
     console.log(currentUser);
     onMount(async () => {
-        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial") && !window.location.pathname.startsWith("/live") && !window.location.pathname.startsWith("/confirm")) {
+        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial") && !window.location.pathname.startsWith("/live") && !window.location.pathname.startsWith("/ticket")) {
 
 	await loadUser();
 	console.log(currentUser);
