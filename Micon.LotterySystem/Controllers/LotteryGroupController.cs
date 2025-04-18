@@ -31,7 +31,18 @@ namespace Micon.LotterySystem.Controllers
                     Name = name,
                     TicketInfo = new TicketInfo()
                 };
-#
+#if DEBUG
+
+                for(int i = 0;i< 300; i++)
+                {
+                    Ticket ticket = new Ticket();
+                    ticket.Number = 9000 + i;
+                    ticket.LotteryGroupId = lotteryGroup.Id;
+                    ticket.Status = TicketStatus.Valid;
+                    lotteryGroup.Tickets.Add(ticket);
+                    applicationDbContext.Add(ticket);
+                }
+#endif
                 await applicationDbContext.LotteryGroups.AddAsync(lotteryGroup);
                 await applicationDbContext.SaveChangesAsync();
             }

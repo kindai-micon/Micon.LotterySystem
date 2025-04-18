@@ -23,9 +23,7 @@
 
         const frameCount = data.numberOfFrames;
         const allTickets = data.tickets || [];
-        if (data.status == 2) {
-            startDrawing();
-        }
+
         // 初期表示は全て "-" で埋める
         displayedNumbers = Array.from({ length: frameCount }, () =>
             Array(digitCount).fill("-")
@@ -48,6 +46,10 @@
         exchangedNumbers = allTickets
             .filter(t => t.status === 4)
             .map(t => t.number.toString().padStart(digitCount, '0').split(''));
+
+        if (data.status == 2) {
+            startDrawing();
+        }
     };
 
     const startDrawing = () => {

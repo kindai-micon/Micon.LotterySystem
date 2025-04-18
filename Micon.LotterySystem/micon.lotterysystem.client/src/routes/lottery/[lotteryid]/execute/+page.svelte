@@ -183,7 +183,7 @@
             case 1:
                 return "抽選開始";
             case 2:
-                return "数値を決定";
+                return "当選番号を確定";
             case 3:
                 return "表示を止める";
             case 4:
@@ -259,23 +259,69 @@
                 return '';
         }
     }
+    function openNewWindow() {
+        window.open(
+            './view',
+            '_blank',
+            'width=600,height=400,left=100,top=100,noopener,noreferrer'
+        );
+    }
 </script>
 
 <style>
     .slot {
-        border: 1px solid #ccc;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border-radius: 8px;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+        transition: transform 0.2s ease;
     }
 
+        .slot:hover {
+            transform: translateY(-2px);
+        }
+
     .actions {
-        margin-top: 0.5rem;
+        margin-top: 1rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
     }
 
     button {
-        margin-right: 1rem;
+        padding: 0.6rem 1.2rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #ffffff;
+        background-color: #3a7d7c;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.2s ease, transform 0.2s ease;
     }
+
+        button:hover {
+            background-color: #316a69;
+            transform: translateY(-1px);
+        }
+
+    .fancy-button {
+        margin-bottom: 1.5rem;
+        background-color: #2c6e6b;
+        padding: 0.7rem 1.4rem;
+        font-size: 1rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+        .fancy-button:hover {
+            background-color: #225c5a;
+            transform: scale(1.03);
+        }
 
     .tickets-container {
         margin-top: 1rem;
@@ -285,24 +331,37 @@
     }
 
     .ticket {
-        padding: 0.5rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        padding: 0.5rem 0.7rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background-color: #ffffff;
+        font-weight: 600;
+        color: #444;
         min-width: 60px;
         text-align: center;
     }
 
     .status-green {
-        background-color: #90ee90; /* 緑色 */
+        background-color: #c3e6cb; /* 穏やかなグリーン */
+        border-color: #b1dfbb;
+        color: #256029;
     }
 
     .status-blue {
-        background-color: #a9c5e9; /* くすんだ青色 */
+        background-color: #d1ecf1; /* 穏やかなブルー */
+        border-color: #bee5eb;
+        color: #0c5460;
     }
+
+
 </style>
 
 {#if loaded}
+<button class="fancy-button" on:click={openNewWindow}>
+    結果画面を開く
+</button>
   {#each slots as slot}
+
 <div class="slot">
     <h3>{slot.name}</h3>
     <p>商品: {slot.merchandise}</p>
@@ -325,11 +384,11 @@
 
     <div class="actions">
         {#if getWinningModel(slot.slotId).status === 4 || getWinningModel(slot.slotId).status === 3}
-        <button on:click={async() => await onStopExchange(slot.slotId)}>引き換えを中止する</button>
+        <button class="fancy-button" on:click={async() => await onStopExchange(slot.slotId)}>引き換えを中止する</button>
         {/if}
 
         {#if getLotteryActionLabel(getWinningModel(slot.slotId).status) != null}
-        <button on:click={async() =>
+        <button class="fancy-button" on:click={async() =>
             await onLotteryAction(slot.slotId, getWinningModel(slot.slotId).status)}>
             {getLotteryActionLabel(getWinningModel(slot.slotId).status)}
         </button>
