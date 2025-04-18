@@ -170,7 +170,18 @@
 
 {#if visible}
 <div class="container">
-	<h2>{prizeLevel} 抽選中！</h2>
+	<h2>抽選結果</h2>
+
+	<div>
+		<h4>1等</h4>
+		<ol>
+			<li>1234567</li>
+			<li>3456789</li>
+			<li>3456789</li>
+		</ol>
+	</div>
+
+	<!--<h2>{prizeLevel} 抽選中！</h2>
     <div class="grid">
         {#each displayedNumbers as digits, index}
         <div class="card">
@@ -192,7 +203,7 @@
                 {/each}
             </div>
         </div>
-        {/each}
-    </div>-->
+        {/each}-->
+<!--</div>-->
 </div>
 {/if}
