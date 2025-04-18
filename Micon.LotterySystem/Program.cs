@@ -1,99 +1,98 @@
 ﻿using Micon.LotterySystem.Handler;
 using Micon.LotterySystem.Models;
 using Micon.LotterySystem.Services;
+using Micon.LotterySystem.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using System.IO;
 using System.Text.Json.Serialization;
-using Micon.LotterySystem.Hubs;
+
 namespace Micon.LotterySystem
 {
     public class Program
     {
         public static void Main(string[] args)
         {
-            // �� �K�v�Œ����OK�Bappsettings.json ����ϐ���ǂݍ��܂��B
             var builder = WebApplication.CreateBuilder(args);
 
-            // JSON���[�v�h�~�Ȃ�
-            builder.Services.AddControllers().AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-            });
+            // JSONループ防止など
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                });
 
-            // �T�[�r�X�o�^
-            builder.Services.AddScoped<IPasscodeService, PasscodeService>();
-            builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
-            builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
-            builder.Services.AddSignalR();
+            // DB接続
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-            {
-                options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db"));
-            });
+                options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db")));
+
+            // SignalR
+            builder.Services.AddSignalR();
+
+            // CORS
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy(
-                    "AllowAll",
-                    builder =>
-                    {
-                        builder.AllowAnyOrigin()   // すべてのオリジンからのアクセスを許可
-                               .AllowAnyMethod()
-                               .AllowAnyHeader();
-                    });
-            });
-            builder.Services.AddAuthorization(options =>
-            {
-                AuthorityScanService authorityScanService = new AuthorityScanService();
-                foreach(var auth in authorityScanService.Authority)
+                options.AddPolicy("AllowAll", policy =>
                 {
-                    options.AddPolicy(auth, policy =>
-                    policy.Requirements.Add(new DynamicRoleRequirement(auth)));
-                }
-                
-
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
             });
-            builder.Services.AddAuthentication(option =>
+
+            // 認証 (Authentication)
+            builder.Services.AddAuthentication(options =>
             {
                 options.DefaultScheme = IdentityConstants.ApplicationScheme;
                 options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            }).AddIdentityCookies();
+            })
+            .AddIdentityCookies();
 
+            // Identityユーザー管理
             builder.Services.AddIdentityCore<ApplicationUser>(options =>
             {
                 options.Stores.MaxLengthForKeys = 128;
                 options.User.RequireUniqueEmail = false;
             })
-            .AddDefaultTokenProviders()
             .AddRoles<ApplicationRole>()
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddDefaultTokenProviders()
             .AddUserManager<UserManager<ApplicationUser>>()
             .AddSignInManager<SignInManager<ApplicationUser>>()
-            .AddErrorDescriber<JapaneseIdentityErrorDescriber>()
-            .AddEntityFrameworkStores<ApplicationDbContext>();
+            .AddErrorDescriber<JapaneseIdentityErrorDescriber>();
 
+            // サービス登録
+            builder.Services.AddScoped<IPasscodeService, PasscodeService>();
+            builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
+            builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
+
+            // 認可 (Authorization)
             builder.Services.AddAuthorization(options =>
             {
-                var authorityScanService = new AuthorityScanService();
-                foreach (var auth in authorityScanService.Authority)
+                var scanner = new AuthorityScanService();
+                foreach (var auth in scanner.Authority)
                 {
                     options.AddPolicy(auth, policy =>
                         policy.Requirements.Add(new DynamicRoleRequirement(auth)));
                 }
             });
 
+            // Swagger
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
 
-            // �J�����̂� Swagger
+            // 開発時のみ Swagger UI を有効化
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
+
             app.UseCors("AllowAll");
             app.UseWebSockets();
             app.UseHttpsRedirection();
@@ -104,7 +103,9 @@ namespace Micon.LotterySystem
             app.UseAuthorization();
 
             app.MapControllers();
-            app.MapHub<LotteryHub>("/api/lotteryHub");
+            app.MapHub<LotteryHub>("/api/lotteryHub");  // ダブルクォートに修正
+
+            // SPA fallback
             app.Use(async (context, next) =>
             {
                 if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
@@ -122,7 +123,7 @@ namespace Micon.LotterySystem
                 await next();
             });
 
-            // �}�C�O���[�V���������K�p�i�J��������ɂ������Ȃ� if ���ǉ��j
+            // マイグレーション自動適用（開発環境などで）
             using (var scope = app.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

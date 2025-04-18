@@ -59,7 +59,7 @@
 	/** チケット状態を取得して UI を制御 */
 	async function checkTicketStatus() {
 	try {
-	const res = await fetch(/api/ticket/${scannedGuid});
+	const res = await fetch(`/api/ticket/${scannedGuid}`);
 	if (!res.ok) throw new Error();
 	const data = await res.json();
 	ticketNumber = data.number;
@@ -79,7 +79,7 @@
 	/** 有効化 */
 	async function activateTicket() {
 	try {
-	const res = await fetch(/api/ticket/activate/${scannedGuid}, { method: 'POST' });
+	const res = await fetch(`/api/ticket/activate/${scannedGuid}`, { method: 'POST' });
 	if (!res.ok) throw new Error();
 	ticketStatus = 'Valid';
 	showActivateButton = false;
