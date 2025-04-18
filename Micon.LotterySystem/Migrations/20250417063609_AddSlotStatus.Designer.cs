@@ -3,6 +3,7 @@ using System;
 using Micon.LotterySystem;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Micon.LotterySystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250417063609_AddSlotStatus")]
+    partial class AddSlotStatus
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -138,42 +141,6 @@ namespace Micon.LotterySystem.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("Authorities");
-                });
-
-            modelBuilder.Entity("Micon.LotterySystem.Models.IssueLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Count")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<long>("EndNumber")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset>("IssuedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("IssuerName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("LotteryGroupDisplayId")
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("StartNumber")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset>("Updated")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("IssueLogs");
                 });
 
             modelBuilder.Entity("Micon.LotterySystem.Models.LotteryGroup", b =>

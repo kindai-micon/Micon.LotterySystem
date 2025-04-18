@@ -8,35 +8,54 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Text.Json.Serialization;
-
+using Micon.LotterySystem.Hubs;
 namespace Micon.LotterySystem
 {
     public class Program
     {
         public static void Main(string[] args)
         {
-            // ← 必要最低限でOK。appsettings.json や環境変数も読み込まれる。
+            // �� �K�v�Œ����OK�Bappsettings.json ����ϐ���ǂݍ��܂��B
             var builder = WebApplication.CreateBuilder(args);
 
-            // JSONループ防止など
+            // JSON���[�v�h�~�Ȃ�
             builder.Services.AddControllers().AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
 
-            // サービス登録
+            // �T�[�r�X�o�^
             builder.Services.AddScoped<IPasscodeService, PasscodeService>();
             builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
             builder.Services.AddScoped<IAuthorizationHandler, DynamicRoleHandler>();
-
-            // DB接続
+            builder.Services.AddSignalR();
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db"));
             });
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy(
+                    "AllowAll",
+                    builder =>
+                    {
+                        builder.AllowAnyOrigin()   // すべてのオリジンからのアクセスを許可
+                               .AllowAnyMethod()
+                               .AllowAnyHeader();
+                    });
+            });
+            builder.Services.AddAuthorization(options =>
+            {
+                AuthorityScanService authorityScanService = new AuthorityScanService();
+                foreach(var auth in authorityScanService.Authority)
+                {
+                    options.AddPolicy(auth, policy =>
+                    policy.Requirements.Add(new DynamicRoleRequirement(auth)));
+                }
+                
 
-            // 認証・認可
-            builder.Services.AddAuthentication(options =>
+            });
+            builder.Services.AddAuthentication(option =>
             {
                 options.DefaultScheme = IdentityConstants.ApplicationScheme;
                 options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
@@ -69,13 +88,14 @@ namespace Micon.LotterySystem
 
             var app = builder.Build();
 
-            // 開発時のみ Swagger
+            // �J�����̂� Swagger
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
-
+            app.UseCors("AllowAll");
+            app.UseWebSockets();
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseRouting();
@@ -84,8 +104,7 @@ namespace Micon.LotterySystem
             app.UseAuthorization();
 
             app.MapControllers();
-
-            // SPAルーティング（/api, /account 以外は index.html）
+            app.MapHub<LotteryHub>("/api/lotteryHub");
             app.Use(async (context, next) =>
             {
                 if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)
@@ -103,7 +122,7 @@ namespace Micon.LotterySystem
                 await next();
             });
 
-            // マイグレーション自動適用（開発環境限定にしたいなら if 文追加）
+            // �}�C�O���[�V���������K�p�i�J��������ɂ������Ȃ� if ���ǉ��j
             using (var scope = app.Services.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
