@@ -22,6 +22,7 @@ namespace Micon.LotterySystem.Models
     {
         Invalid,
         Valid,
-        Winner
+        Winner,
+        Exchanged
     }
 }
