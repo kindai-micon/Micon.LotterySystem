@@ -16,6 +16,9 @@ namespace Micon.LotterySystem.Models
         public Guid Guid { get; set; }
 
         [NotMapped]
-        public string Url => $"https://example.com/ticket/{Guid}";
+        public const string BaseUrl = $"https://lottery.micon.culb/ticket/";
+
+        [NotMapped]
+        public string Url { get; set; }
     }
 }

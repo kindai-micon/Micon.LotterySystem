@@ -71,17 +71,18 @@ public class TicketPdfController : ControllerBase
         _db.IssueLogs.Add(log);
         await _db.SaveChangesAsync();
 
-        var ticketInfos = tickets.Select(t => new TicketInfo
+        var ticketInfo = tickets.Select(t => new TicketInfo
         {
             TicketNumber = (int)t.Number,
             Guid = t.DisplayId,
             Name = lotteryGroup.TicketInfo?.Name ?? "抽選券",
             Description = lotteryGroup.TicketInfo?.Description ?? "",
-            Warning = lotteryGroup.TicketInfo?.Warning ?? ""
+            Warning = lotteryGroup.TicketInfo?.Warning ?? "",
+            Url = TicketInfo.BaseUrl+t.DisplayId.ToString()
         }).ToList();
 
         var generator = new TicketPdfGenerator();
-        var bytes = generator.GenerateTicketsPdf(ticketInfos);
+        var bytes = generator.GenerateTicketsPdf(ticketInfo);
 
         return File(bytes, "application/pdf", "抽選券.pdf");
     }
