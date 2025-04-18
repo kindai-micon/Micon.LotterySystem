@@ -18,8 +18,8 @@ namespace Micon.LotterySystem.Controllers
     [Route("api/[controller]")]
     [ApiController]
     public class UserController(
-        UserManager<ApplicationUser> userManager, 
-        SignInManager<ApplicationUser> signInManager, 
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         RoleManager<ApplicationRole> roleManager,
         ApplicationDbContext applicationDbContext,
         IAuthorityScanService authorityScanService,
@@ -28,7 +28,7 @@ namespace Micon.LotterySystem.Controllers
         [HttpGet(nameof(MyInfo))]
         public async Task<IActionResult> MyInfo()
         {
-            
+
             var user = await userManager.GetUserAsync(User);
             if (user == null)
             {
@@ -43,9 +43,9 @@ namespace Micon.LotterySystem.Controllers
             return Ok(sendUser);
         }
 
-        [Authorize("UserManagement")]
+        [Authorize("UserView")]
         [HttpGet(nameof(UserInfo))]
-        public async Task<IActionResult> UserInfo([FromQuery]string userName)
+        public async Task<IActionResult> UserInfo([FromQuery] string userName)
         {
 
             var user = await userManager.FindByNameAsync(userName);
@@ -68,13 +68,18 @@ namespace Micon.LotterySystem.Controllers
         {
             var my = await userManager.GetUserAsync(User);
             var user = await userManager.FindByNameAsync(userName);
-
+            var adminUsers = await userManager.GetUsersInRoleAsync("Admin");
+            if(adminUsers.Any(x=>x.Id==user.Id) && adminUsers.Count == 1)
+            {
+                return Conflict(new IdentityError[] { new () { Code = "adminerror", Description = "AdminUserが一人以上存在する必要があります" } });
+            }
+            
             var result = await userManager.DeleteAsync(my);
             if (!result.Succeeded)
             {
                 return BadRequest(result.Errors);
             }
-            if(my.Id == user.Id)
+            if (my.Id == user.Id)
             {
                 await signInManager.SignOutAsync();
             }
@@ -118,7 +123,7 @@ namespace Micon.LotterySystem.Controllers
                 .ToListAsync();
             return Ok(sendUser);
         }
-        
+        [Authorize(Policy = "UserView")]
         [Authorize(Policy = "UserManagement")]
         [HttpPost(nameof(Register))]
         public async Task<IActionResult> Register([FromBody] RegisterModel registerModel)
@@ -133,7 +138,7 @@ namespace Micon.LotterySystem.Controllers
                 {
                     return BadRequest(result.Errors);
                 }
-                if(registerModel.Email != null)
+                if (registerModel.Email != null)
                 {
                     result = await userManager.SetEmailAsync(applicationUser, registerModel.Email);
 
@@ -145,7 +150,7 @@ namespace Micon.LotterySystem.Controllers
             }
             else
             {
-                BadRequest(new IdentityError[] { new IdentityError() { Code = "Exists", Description = "存在するユーザー名です" } });
+                return BadRequest(new IdentityError[] { new IdentityError() { Code = "Exists", Description = "存在するユーザー名です" } });
             }
             return Ok();
         }
@@ -154,7 +159,7 @@ namespace Micon.LotterySystem.Controllers
         {
             if (await passcodeService.CheckPascodeAsync(initialUser.Passcode))
             {
-                if(initialUser.Password != initialUser.ConfirmPassword)
+                if (initialUser.Password != initialUser.ConfirmPassword)
                 {
                     return BadRequest(new IdentityError[] { new IdentityError() { Code = "Passcode", Description = "Passcodeが異なります" } });
 
@@ -163,27 +168,27 @@ namespace Micon.LotterySystem.Controllers
                 applicationUser.UserName = initialUser.UserName;
                 applicationUser.Email = initialUser.Email;
                 var result = await userManager.CreateAsync(applicationUser, initialUser.Password);
-                if(result.Succeeded == false)
+                if (result.Succeeded == false)
                 {
                     return BadRequest(result.Errors.ToArray());
                 }
                 ApplicationRole applicationRole = new ApplicationRole("Admin");
-                result = await roleManager.CreateAsync(applicationRole );
-                if(result.Succeeded == false)
+                result = await roleManager.CreateAsync(applicationRole);
+                if (result.Succeeded == false)
                 {
                     return BadRequest(result.Errors.ToArray());
                 }
                 List<Authority> authorities = new List<Authority>();
                 foreach (var authority in authorityScanService.Authority)
                 {
-                    var authority1 = applicationDbContext.Authorities.Add(new Authority() { Name = authority});
+                    var authority1 = applicationDbContext.Authorities.Add(new Authority() { Name = authority });
                     authorities.Add(authority1.Entity);
 
                 }
                 applicationRole.Authorities.AddRange(authorities);
 
-                result = await userManager.AddToRoleAsync(applicationUser,applicationRole.Name);
-                if(result.Succeeded == false)
+                result = await userManager.AddToRoleAsync(applicationUser, applicationRole.Name);
+                if (result.Succeeded == false)
                 {
                     return BadRequest(result.Errors.ToArray());
                 }
@@ -208,7 +213,7 @@ namespace Micon.LotterySystem.Controllers
             return Ok();
         }
 
-        [Authorize("UserManagement")]
+        [Authorize(Policy="UserView")]
         [HttpGet(nameof(UserList))]
         public async Task<IActionResult> UserList()
         {
@@ -226,6 +231,7 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok(sendUsers);
         }
+        [Authorize(Policy = "UserView")]
         [Authorize(Policy = "UserRoleManagement")]
         [HttpPut(nameof(AddRole))]
         public async Task<IActionResult> AddRole([FromBody] UserRoleModel userRoleModel)
@@ -247,13 +253,13 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok();
         }
-
+        [Authorize(Policy = "UserView")]
         [Authorize(Policy = "UserRoleManagement")]
         [HttpPut(nameof(RemoveRole))]
         public async Task<IActionResult> RemoveRole([FromBody] UserRoleModel userRoleModel)
         {
             var users = await userManager.GetUsersInRoleAsync(userRoleModel.RoleName);
-            if(userRoleModel.RoleName == "Admin"&&users.Count <= 1)
+            if (userRoleModel.RoleName == "Admin" && users.Count <= 1)
             {
                 return Conflict();
             }

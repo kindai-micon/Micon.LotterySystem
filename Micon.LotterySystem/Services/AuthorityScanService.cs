@@ -28,12 +28,15 @@ namespace Micon.LotterySystem.Services
                 var methods = type.GetMethods();
                 foreach(var method in methods)
                 {
-                    var authMethod = method.GetCustomAttribute<AuthorizeAttribute>();
-                    if(authMethod != null)
+                    var authMethods = method.GetCustomAttributes<AuthorizeAttribute>();
+                    if(authMethods.Any())
                     {
-                        if(authMethod.Policy != null)
+                        foreach (var authMethod in authMethods)
                         {
-                            Authority.Add(authMethod.Policy);
+                            if (authMethod.Policy != null)
+                            {
+                                Authority.Add(authMethod.Policy);
+                            }
                         }
                     }
                 }
