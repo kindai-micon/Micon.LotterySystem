@@ -49,18 +49,63 @@ namespace Micon.LotterySystem.Controllers
             return Ok("チケットを無効化しました");
         }
 
+        [HttpPost("Exchange/{guid}")]
+        public async Task<IActionResult> Exchange(Guid guid)
+        {
+            var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.DisplayId == guid);
+            if (ticket == null)
+                return NotFound("チケットが見つかりません");
+
+            if (ticket.Status == TicketStatus.Exchanged)
+                return Ok("すでに交換済みです");
+
+            var slot = _db.LotterySlots.Where(x => x.Tickets.Any(x => x.Id == ticket.Id)).FirstOrDefault();
+            if (slot == null)
+            {
+                return Conflict("当選者ではありません");
+            }
+            if (ticket.Status != TicketStatus.Winner)
+            {
+                if (ticket.Status == TicketStatus.Exchanged)
+                {
+                    return Conflict("交換済み");
+                }
+                else
+                {
+                    return Conflict("当選者ではありません");
+                }
+            }
+            ticket.Status = TicketStatus.Exchanged;
+            ticket.Updated = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return Ok("チケットを交換しました");
+        }
         [HttpGet("{guid}")]
         public async Task<IActionResult> GetStatus(Guid guid)
         {
             var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.DisplayId == guid);
             if (ticket == null)
                 return NotFound("チケットが見つかりません");
-
+            var slot = _db.LotterySlots.Where(x => x.Tickets.Any(x => x.Id == ticket.Id)).FirstOrDefault();
+            if (slot == null)
+            {
+                return Ok(new
+                {
+                    slotName = default(string),
+                    merchandise = default(string),
+                    number = ticket.Number,
+                    status = ticket.Status.ToString()
+                });
+            }
             return Ok(new
             {
+                slotName = slot.Name,
+                merchandise = slot.Merchandise,
                 number = ticket.Number,
                 status = ticket.Status.ToString()
             });
         }
+
     }
 }
