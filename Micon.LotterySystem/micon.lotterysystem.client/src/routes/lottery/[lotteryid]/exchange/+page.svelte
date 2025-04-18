@@ -10,7 +10,8 @@
 	let ticketNumber: number | null = null;
 	let ticketStatus: string | null = null;
 	let errorMessage = '';
-
+	let merchandise = "";
+	let slotName = "";
 	let isScanning = false;
 	let showActivateButton = false;
 
@@ -61,13 +62,13 @@
 	/** チケット状態を取得して UI を制御 */
 	async function checkTicketStatus() {
 	try {
-	const res = await fetch(`/api/ticket/GetWinnerStatus/${scannedGuid}`);
+	const res = await fetch(`/api/ticket/${scannedGuid}`);
 	if (!res.ok) throw new Error();
 	const data = await res.json();
 	ticketNumber = data.number;
 		ticketStatus = data.status;
-		slotName = data.slotName;
-		merchandise = data.merchandise;
+		slotName = data.slotName??"";
+		merchandise = data.merchandise??"";
 	showActivateButton = (ticketStatus === 'Winner');
 
 	if (!showActivateButton) {
@@ -146,7 +147,7 @@
     }
 </style>
 
-<h1>抽選券の有効化</h1>
+<h1>抽選券(当選券)の引き換え</h1>
 <div id="reader" bind:this={qrReaderEl}></div>
 
 <div class="card">
