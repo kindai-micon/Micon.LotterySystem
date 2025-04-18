@@ -80,6 +80,11 @@
             <div class="desc">抽選券を発行できます</div>
         </a>
 
+        <a class="link-card" href="{lotteryId}/tickets">
+            抽選券一覧
+            <div class="desc">発行済みの抽選券の一覧を確認できます</div>
+        </a>
+
         <a class="link-card" href="{lotteryId}/execuete">
             抽選の実行
             <div class="desc">実際に抽選を行い当選者を決定</div>
@@ -90,7 +95,7 @@
             <div class="desc">発行した抽選券のQRコードを読み込み有効化します</div>
         </a>
         <a class="link-card" href="{lotteryId}/disable">
-            抽選券の有効化
+            抽選券の無効化
             <div class="desc">有効化した抽選券のQRコードを読み込み無効化します</div>
         </a>
 

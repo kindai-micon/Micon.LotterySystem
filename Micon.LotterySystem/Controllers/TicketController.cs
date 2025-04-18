@@ -62,5 +62,32 @@ namespace Micon.LotterySystem.Controllers
                 status = ticket.Status.ToString()
             });
         }
+
+        [HttpGet("list")]
+        public async Task<IActionResult> GetTickets([FromQuery] Guid lotteryGroupDisplayId)
+        {
+            // DisplayId から LotteryGroup レコードを取得
+            var group = await _db.LotteryGroups
+                                 .FirstOrDefaultAsync(g => g.DisplayId == lotteryGroupDisplayId);
+
+            if (group == null)
+                return NotFound($"抽選会 {lotteryGroupDisplayId} が見つかりません");
+
+            // 本来の PK (group.Id) でチケットを検索
+            var tickets = await _db.Tickets
+                .Where(t => t.LotteryGroupId == group.Id)
+                .Select(t => new {
+                    id = t.Id,
+                    number = t.Number,
+                    displayId = t.DisplayId,
+                    status = t.Status.ToString(),
+                    issuedAt = t.Created,
+                    updatedAt = t.Updated
+                })
+                .OrderBy(t => t.number)
+                .ToListAsync();
+
+            return Ok(tickets);
+        }
     }
 }
