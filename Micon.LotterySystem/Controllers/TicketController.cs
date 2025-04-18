@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Micon.LotterySystem.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Micon.LotterySystem.Controllers
 {
@@ -66,28 +67,32 @@ namespace Micon.LotterySystem.Controllers
         [HttpGet("list")]
         public async Task<IActionResult> GetTickets([FromQuery] Guid lotteryGroupDisplayId)
         {
-            // DisplayId から LotteryGroup レコードを取得
+            // DisplayId から LotteryGroup を取得
             var group = await _db.LotteryGroups
                                  .FirstOrDefaultAsync(g => g.DisplayId == lotteryGroupDisplayId);
-
             if (group == null)
-                return NotFound($"抽選会 {lotteryGroupDisplayId} が見つかりません");
+                return NotFound();
 
-            // 本来の PK (group.Id) でチケットを検索
+            // チケットと発行ログを内部結合して issuerName を取得
             var tickets = await _db.Tickets
                 .Where(t => t.LotteryGroupId == group.Id)
                 .Select(t => new {
-                    id = t.Id,
                     number = t.Number,
-                    displayId = t.DisplayId,
                     status = t.Status.ToString(),
                     issuedAt = t.Created,
-                    updatedAt = t.Updated
+                    updatedAt = t.Updated,
+                    issuerName = _db.IssueLogs
+                        .Where(log => log.LotteryGroupDisplayId == lotteryGroupDisplayId
+                                   && t.Number >= log.StartNumber
+                                   && t.Number <= log.EndNumber)
+                        .Select(log => log.IssuerName)
+                        .FirstOrDefault() ?? "—"   // 見つからなければダッシュ
                 })
-                .OrderBy(t => t.number)
+                .OrderBy(x => x.number)
                 .ToListAsync();
 
             return Ok(tickets);
         }
+
     }
 }

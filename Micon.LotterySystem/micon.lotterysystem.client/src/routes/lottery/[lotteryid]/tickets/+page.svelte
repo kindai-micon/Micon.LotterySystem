@@ -20,6 +20,7 @@
         loading = true;
         try {
             const res = await fetch(`/api/ticket/list?lotteryGroupDisplayId=${lotteryId}`);
+
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             tickets = await res.json();
             error = null;
@@ -72,20 +73,20 @@
         <thead>
             <tr>
                 <th>番号</th>
-                <th>DisplayID</th>
                 <th>状態</th>
                 <th>発行日時</th>
                 <th>更新日時</th>
+                <th>発行者</th>
             </tr>
         </thead>
         <tbody>
             {#each tickets as t}
             <tr>
                 <td>No.{t.number}</td>
-                <td>{t.displayId}</td>
                 <td>{t.status}</td>
                 <td>{new Date(t.issuedAt).toLocaleString('ja-JP')}</td>
                 <td>{new Date(t.updatedAt).toLocaleString('ja-JP')}</td>
+                <td>{t.issuerName}</td>
             </tr>
             {/each}
         </tbody>
