@@ -20,9 +20,11 @@
     const unsubscribe = user.subscribe(value => {
         currentUser = value;
     });
+    const isLotteryViewPath = window.location.pathname.match(/\/lottery\/[^\/]+\/view/);
+
     console.log(currentUser);
     onMount(async () => {
-        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial")) {
+        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial") && !isLotteryViewPath) {
 
             await loadUser();
             console.log(currentUser);
