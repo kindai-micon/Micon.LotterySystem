@@ -22,28 +22,28 @@
     });
     console.log(currentUser);
     onMount(async () => {
-        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial") && !window.location.pathname.startsWith("/live")) {
+        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial") && !window.location.pathname.startsWith("/live") && !window.location.pathname.startsWith("/confirm")) {
 
-await loadUser();
-console.log(currentUser);
-if (currentUser === null) {
+	await loadUser();
+	console.log(currentUser);
+	if (currentUser === null) {
 
-await goto("/login")
-isLoginPath = true;
-}
-else {
+	await goto("/login")
+	isLoginPath = true;
+	}
+	else {
 
-}
-}
-else {
-isLoginPath = true;
-}
-})
-let drawerOpen = $state(false);
+	}
+	}
+	else {
+	isLoginPath = true;
+	}
+	})
+	let drawerOpen = $state(false);
 
-const toggleDrawer = () => {
-drawerOpen = !drawerOpen;
-};
+	const toggleDrawer = () => {
+	drawerOpen = !drawerOpen;
+	};
 </script>
 
 <style>
