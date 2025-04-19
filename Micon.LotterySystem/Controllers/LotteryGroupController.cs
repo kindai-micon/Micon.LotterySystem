@@ -78,7 +78,7 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok(group?.Name);
         }
-        [Authorize()]
+        [Authorize]
 
         [HttpPost(nameof(LoadTicketJson))]
         public async Task<IActionResult> LoadTicketJson([FromBody] idAndName idAndName)
