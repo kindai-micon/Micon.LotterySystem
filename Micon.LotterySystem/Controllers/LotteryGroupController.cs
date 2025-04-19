@@ -3,6 +3,7 @@ using Micon.LotterySystem.Models.API;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using LotteryGroup = Micon.LotterySystem.Models.LotteryGroup;
 
 namespace Micon.LotterySystem.Controllers
@@ -31,18 +32,7 @@ namespace Micon.LotterySystem.Controllers
                     Name = name,
                     TicketInfo = new TicketInfo()
                 };
-#if DEBUG
 
-                for(int i = 0;i< 300; i++)
-                {
-                    Ticket ticket = new Ticket();
-                    ticket.Number = 9000 + i;
-                    ticket.LotteryGroupId = lotteryGroup.Id;
-                    ticket.Status = TicketStatus.Valid;
-                    lotteryGroup.Tickets.Add(ticket);
-                    applicationDbContext.Add(ticket);
-                }
-#endif
                 await applicationDbContext.LotteryGroups.AddAsync(lotteryGroup);
                 await applicationDbContext.SaveChangesAsync();
             }
@@ -84,5 +74,26 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok(group?.Name);
         }
+        [HttpPost(nameof(LoadTicketJson))]
+        public async Task<IActionResult> LoadTicketJson([FromBody] idAndName idAndName)
+        {
+            var raw = System.IO.File.ReadAllText(idAndName.json);
+            var tmp = JsonSerializer.Deserialize<jsonTicket[]>(raw);
+            var group = await applicationDbContext.LotteryGroups.Where(x => x.DisplayId.ToString() == idAndName.groupId).FirstOrDefaultAsync();
+            foreach(var item in tmp) {
+                Ticket ticket = new Ticket();
+                ticket.Status = TicketStatus.Invalid;
+                ticket.Number = item.number;
+                ticket.DisplayId = item.displayId;
+                applicationDbContext.Tickets.Add(ticket);
+                group.Tickets.Add(ticket);
+            }
+            await applicationDbContext.SaveChangesAsync();
+            return Ok();
+        }
+        
     }
+    public record idAndName (string groupId,string json);
+    public record jsonTicket(long number,Guid displayId);
 }
+

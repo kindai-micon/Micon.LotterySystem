@@ -85,7 +85,7 @@
             <div class="desc">発行済みの抽選券の一覧を確認できます</div>
         </a>
 
-        <a class="link-card" href="{lotteryId}/execuete">
+        
         <a class="link-card" href="{lotteryId}/execute">
             抽選の実行
             <div class="desc">実際に抽選を行い当選者を決定</div>
