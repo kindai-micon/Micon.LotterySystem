@@ -1,5 +1,6 @@
 ﻿using Micon.LotterySystem.Models;
 using Micon.LotterySystem.Models.API;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +13,14 @@ namespace Micon.LotterySystem.Controllers
     [ApiController]
     public class LotteryGroupController(ApplicationDbContext applicationDbContext) : ControllerBase
     {
+        [Authorize]
         [HttpGet(nameof(List))]
         public async Task<IActionResult> List()
         {
             var list = await applicationDbContext.LotteryGroups.Select(x => new { name = x.Name, id = x.DisplayId.ToString()}).ToListAsync();
             return Ok(list);
         }
+        [Authorize(Policy = "LotteryGroupManagement")]
         [HttpPost(nameof(Create))]
         public async Task<IActionResult> Create([FromBody] string name)
         {
@@ -38,7 +41,7 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok();
         }
-
+        [Authorize(Policy = "LotteryGroupManagement")]
         [HttpPost(nameof(Delete))]
         public async Task<IActionResult> Delete([FromBody] string name)
         {
@@ -51,6 +54,7 @@ namespace Micon.LotterySystem.Controllers
             await applicationDbContext.SaveChangesAsync();
             return Ok();
         }
+        [Authorize(Policy = "LotteryGroupManagement")]
         [HttpPut(nameof(Rename))]
         public async Task<IActionResult> Rename([FromBody] RenameModel renameModel)
         {
@@ -74,6 +78,8 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok(group?.Name);
         }
+        [Authorize]
+
         [HttpPost(nameof(LoadTicketJson))]
         public async Task<IActionResult> LoadTicketJson([FromBody] idAndName idAndName)
         {

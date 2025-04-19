@@ -1,6 +1,7 @@
 ﻿using Micon.LotterySystem.Hubs;
 using Micon.LotterySystem.Models;
 using Micon.LotterySystem.Models.API;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,7 @@ namespace Micon.LotterySystem.Controllers
                 .FirstOrDefaultAsync();
             return Ok(slot);
         }
+        [Authorize(Policy = "LotteryExecute")]
         [HttpPut(nameof(TargetSlot))]
 
         public async Task<IActionResult> TargetSlot([FromBody] string slotId)
@@ -85,6 +87,7 @@ namespace Micon.LotterySystem.Controllers
 
             return Ok();
         }
+        [Authorize(Policy = "LotteryExecute")]
         [HttpPut(nameof(AnimationExecute))]
 
         public async Task<IActionResult> AnimationExecute([FromBody]string slotId)
@@ -116,8 +119,8 @@ namespace Micon.LotterySystem.Controllers
             await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("AnimationStart", slot.DisplayId);
             return Ok();
         }
+        [Authorize(Policy = "LotteryExecute")]
         [HttpPut(nameof(LotteryExecute))]
-
         public async Task<IActionResult> LotteryExecute([FromBody] string slotId)
         {
             var group = await applicationDbContext.LotterySlots
@@ -178,8 +181,8 @@ namespace Micon.LotterySystem.Controllers
             await lotteryHubContext.Clients.Group(group.DisplayId.ToString()).SendAsync("SubmitLottery", slot.DisplayId);
             return Ok();
         }
+        [Authorize(Policy = "LotteryExecute")]
         [HttpPut(nameof(ViewStop))]
-
         public async Task<IActionResult> ViewStop([FromBody] string slotId)
         {
 
@@ -218,9 +221,8 @@ namespace Micon.LotterySystem.Controllers
             return Ok();
                 
         }
-
+        [Authorize(Policy = "LotteryExecute")]
         [HttpPut(nameof(ExchangeStop))]
-
         public async Task<IActionResult> ExchangeStop([FromBody] string slotId)
         {
             var group = await applicationDbContext.LotterySlots

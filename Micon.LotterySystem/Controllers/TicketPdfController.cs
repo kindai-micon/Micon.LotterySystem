@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using QuestPDF.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 [Route("api/pdf")]
 [ApiController]
@@ -19,6 +20,7 @@ public class TicketPdfController : ControllerBase
         _db = db;
         _userManager = userManager;
     }
+    [Authorize(Policy = "TicketPublish")]
 
     [HttpPost("generate")]
     public async Task<IActionResult> GeneratePdf([FromBody] TicketRequest request)
@@ -92,7 +94,7 @@ public class TicketPdfController : ControllerBase
         public int Count { get; set; }
         public Guid LotteryGroupId { get; set; }
     }
-
+    [Authorize]
     [HttpGet("logs")]
     public IActionResult GetLogs([FromQuery] Guid lotteryGroupId)
     {

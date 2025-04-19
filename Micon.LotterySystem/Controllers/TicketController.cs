@@ -15,6 +15,7 @@ namespace Micon.LotterySystem.Controllers
         {
             _db = db;
         }
+        [Authorize(Policy = "TicketActive")]
 
         [HttpPost("activate/{guid}")]
         public async Task<IActionResult> Activate(Guid guid)
@@ -32,6 +33,7 @@ namespace Micon.LotterySystem.Controllers
 
             return Ok("チケットを有効化しました");
         }
+        [Authorize(Policy = "TicketDeactivate")]
 
         [HttpPost("deactivate/{guid}")]
         public async Task<IActionResult> Deactivate(Guid guid)
@@ -49,8 +51,10 @@ namespace Micon.LotterySystem.Controllers
 
             return Ok("チケットを無効化しました");
         }
+        [Authorize(Policy = "TicketExchange")]
 
         [HttpPost("Exchange/{guid}")]
+
         public async Task<IActionResult> Exchange(Guid guid)
         {
             var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.DisplayId == guid);
