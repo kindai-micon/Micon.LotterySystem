@@ -125,7 +125,25 @@ namespace Micon.LotterySystem
                 var dbContext = sp.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 dbContext.Database.Migrate();
                 var authorityScanService = sp.ServiceProvider.GetRequiredService<IAuthorityScanService>();
-
+                
+                var role =  dbContext.Roles.Where(x => x.Name == "Admin")
+                    .Include(x => x.Authorities).FirstOrDefault();
+                if(role != null)
+                {
+                    var nothave = authorityScanService.Authority.Where(x => !role.Authorities.Any(y => y.Name == x));
+                    foreach(var auth in nothave)
+                    {
+                        Authority authority = new Authority()
+                        {
+                            Name = auth,
+                            RoleId = role.Id,
+                            Role = role
+                        };
+                        role.Authorities.Add(authority);
+                        dbContext.Add(authority);
+                        dbContext.SaveChanges();
+                    }
+                }
             }
             app.Run();
         }
