@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Micon.LotterySystem;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Micon.LotterySystem.Controllers
 {
@@ -10,6 +11,8 @@ namespace Micon.LotterySystem.Controllers
     [ApiController]
     public class LotterySlotController(ApplicationDbContext applicationDbContext) : ControllerBase
     {
+        [Authorize]
+
         [HttpGet(@$"{nameof(List)}/{{id}}")]
         public async Task<IActionResult> List(string id)
         {
@@ -33,6 +36,8 @@ namespace Micon.LotterySystem.Controllers
                 .ToListAsync();
             return Ok(list);
         }
+        [Authorize(Policy = "LotterySlotManagement")]
+
         [HttpPost(nameof(Create))]
         public async Task<IActionResult> Create(LotterySlots lotterySlots)
         {
@@ -52,6 +57,8 @@ namespace Micon.LotterySystem.Controllers
             await applicationDbContext.SaveChangesAsync();
             return Ok();
         }
+        [Authorize(Policy = "LotterySlotManagement")]
+
         [HttpPut(nameof(Update))]
         public async Task<IActionResult> Update(LotterySlots lotterySlots)
         {
@@ -69,6 +76,7 @@ namespace Micon.LotterySystem.Controllers
             await applicationDbContext.SaveChangesAsync();
             return Ok();
         }
+        [Authorize(Policy = "LotterySlotManagement")]
 
         [HttpPost(nameof(Delete))]
         public async Task<IActionResult> Delete([FromBody] string id)
@@ -93,6 +101,7 @@ namespace Micon.LotterySystem.Controllers
             await applicationDbContext.SaveChangesAsync();
             return Ok();
         }
+        [Authorize(Policy = "LotterySlotManagement")]
 
         [HttpPut(nameof(MoveIndex))]
         public async Task<IActionResult> MoveIndex(MoveIndex moveIndex)
