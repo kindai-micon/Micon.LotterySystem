@@ -27,7 +27,7 @@ namespace Micon.LotterySystem.Controllers
                 new LotterySlots 
                 { 
                     DeadLine = x.DeadLine==DateTimeOffset.MaxValue?null:x.DeadLine,
-                    Name =x.Name ,
+                    Name =x.Name,
                     LotteryId=id,
                     SlotId = x.DisplayId.ToString(),
                     Merchandise = x.Merchandise,
