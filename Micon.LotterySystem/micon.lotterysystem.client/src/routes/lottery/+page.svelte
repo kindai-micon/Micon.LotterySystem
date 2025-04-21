@@ -1,4 +1,5 @@
-﻿<script lang="ts">
+﻿﻿
+<script lang="ts">
     import { onMount } from 'svelte';
     type LotteryGroup = {
         name: string;
@@ -131,10 +132,10 @@
         <input type="text"
                placeholder="新しい抽選会名を入力"
                bind:value={newName}
-               on:keydown={(e) => e.key === 'Enter' && createLottery()}
+               onkeydown={(e) => e.key === 'Enter' && createLottery()}
         disabled={creating}
         />
-        <button on:click={createLottery} disabled={creating}>
+        <button onclick={createLottery} disabled={creating}>
             {creating ? '作成中...' : '作成'}
         </button>
     </div>

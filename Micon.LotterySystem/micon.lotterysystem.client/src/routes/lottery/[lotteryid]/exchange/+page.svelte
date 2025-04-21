@@ -164,9 +164,9 @@
 	{/if}
 
 	{#if showActivateButton}
-	<button class="button" on:click={activateTicket}>引き換えますか？</button>
+	<button class="button" onclick={activateTicket}>引き換えますか？</button>
 	{/if}
 
 	<!-- 手動で再スキャンしたい場合のボタン -->
-	<button class="rescan" on:click={() => startScanner()}>再スキャン</button>
+	<button class="rescan" onclick={() => startScanner()}>再スキャン</button>
 </div>

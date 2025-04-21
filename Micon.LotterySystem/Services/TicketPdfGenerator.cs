@@ -7,13 +7,14 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Formats.Png;
 using QuestPDF.Helpers;
+using QuestPDF.Drawing;
 
 public class TicketPdfGenerator
 {
     public byte[] GenerateTicketsPdf(List<TicketInfo> tickets)
     {
         QuestPDF.Settings.License = LicenseType.Community;
-
+        QuestPDF.Settings.FontDiscoveryPaths.Add(Directory.GetCurrentDirectory());
         using var stream = new MemoryStream();
 
         Document.Create(container =>

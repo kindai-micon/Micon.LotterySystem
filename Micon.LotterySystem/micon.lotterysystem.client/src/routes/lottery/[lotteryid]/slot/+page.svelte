@@ -1,4 +1,5 @@
-﻿<script lang="ts">
+﻿﻿
+<script lang="ts">
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
     import { get } from 'svelte/store';
@@ -190,21 +191,21 @@
         <input type="datetime-local" class="width-max"
                bind:value={newSlot.deadLine}
                disabled={noDeadline}
-               on:input={(e) => newSlot.deadLine = e.target.value} />
+               oninput={(e) => newSlot.deadLine = e.target.value} />
         <label class="checkbox-label">
             <input type="checkbox"
                    bind:checked={noDeadline}
-                   on:change={() => {
-            if (newSlot.noDeadline) {
-            newSlot.deadLine = "";
+                   onchange={() => {
+            if (slot.noDeadline) {
+            slot.deadLine = "";
             } else {
-            newSlot.deadLine = toDateTimeLocalFormat(new Date().toISOString());
+            slot.deadLine = toDateTimeLocalFormat(new Date().toISOString());
             }
             }} />
             締切なし
         </label>
     </div>
-    <button class="btn" on:click={createSlot}>作成</button>
+    <button class="btn" onclick={createSlot}>作成</button>
 </div>
 
 {#if loading}
@@ -230,11 +231,11 @@
         <input class="width-max " type="datetime-local"
                bind:value={slot.deadLine}
                disabled={slot.noDeadline}
-               on:input={(e) => slot.deadLine = e.target.value} />
+               oninput={(e) => slot.deadLine = e.target.value} />
         <label class="checkbox-label">
             <input type="checkbox"
                    bind:checked={slot.noDeadline}
-                   on:change={() => {
+                   onchange={() => {
             if (slot.noDeadline) {
             slot.deadLine = "";
             } else {
@@ -245,8 +246,8 @@
         </label>
     </div>
     <div class="slot-actions">
-        <button class="btn" on:click={() => updateSlot(slot, slot.slotId)}>保存</button>
-        <button class="btn" on:click={() => editing[slot.slotId] = false}>キャンセル</button>
+        <button class="btn" onclick={() => updateSlot(slot, slot.slotId)}>保存</button>
+        <button class="btn" onclick={() => editing[slot.slotId] = false}>キャンセル</button>
     </div>
     {:else}
     <p><strong>{slot.name}</strong></p>
@@ -254,12 +255,12 @@
     <p>枠数: {slot.numberOfFrames}</p>
     <p>締切: {slot.deadLine ? new Date(slot.deadLine).toLocaleString() : '未設定'}</p>
     <div class="slot-actions">
-        <button class="btn" on:click={() => editing[slot.slotId] = true}>編集</button>
+        <button class="btn" onclick={() => editing[slot.slotId] = true}>編集</button>
         {#if index > 0}
-        <button class="btn" on:click={() => moveSlot(slot.slotId, index - 1)}>↑ 上へ</button>
+        <button class="btn" onclick={() => moveSlot(slot.slotId, index - 1)}>↑ 上へ</button>
         {/if}
         {#if index < slots.length - 1}
-        <button class="btn" on:click={() => moveSlot(slot.slotId, index + 1)}>↓ 下へ</button>
+        <button class="btn" onclick={() => moveSlot(slot.slotId, index + 1)}>↓ 下へ</button>
         {/if}
     </div>
     {/if}

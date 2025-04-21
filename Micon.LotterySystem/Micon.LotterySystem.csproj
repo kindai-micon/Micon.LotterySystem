@@ -39,6 +39,11 @@
 	<ItemGroup>
 	  <Folder Include="micon.lotterysystem.client\src\routes\tickets-enabled\" />
 	</ItemGroup>
+	<ItemGroup>
+	  <None Update="fonts\NotoSansJP.ttf">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
 
 	<Target Name="CopyPublish" AfterTargets="Publish">
 		<Message Text="## Copy Vite build output" Importance="high" />

@@ -180,5 +180,5 @@
     <div class="success">{success}</div>
     {/if}
 
-    <button on:click={handleSubmit}>作成する</button>
+    <button onclick={handleSubmit}>作成する</button>
 </div>

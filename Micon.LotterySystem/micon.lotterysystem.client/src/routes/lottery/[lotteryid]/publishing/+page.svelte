@@ -173,7 +173,7 @@
 	<div class="section">
 		<div class="label">発行枚数を入力：</div>
 		<input type="number" bind:value={issueCount} min="1" />
-		<button on:click={generateTickets} disabled={isGenerating}>
+		<button onclick={generateTickets} disabled={isGenerating}>
 			{#if isGenerating}
 			発行中...
 			{:else}

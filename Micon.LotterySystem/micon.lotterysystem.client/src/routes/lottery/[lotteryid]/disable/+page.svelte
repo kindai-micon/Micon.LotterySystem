@@ -155,9 +155,9 @@
 	{/if}
 
 	{#if showDeactivateButton}
-	<button class="button" on:click={deactivateTicket}>抽選券を無効化</button>
+	<button class="button" onclick={deactivateTicket}>抽選券を無効化</button>
 	{/if}
 
 	<!-- 手動で再スキャンしたい場合のボタン -->
-	<button class="rescan" on:click={() => startScanner()}>再スキャン</button>
+	<button class="rescan" onclick={() => startScanner()}>再スキャン</button>
 </div>

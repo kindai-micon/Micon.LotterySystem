@@ -232,8 +232,8 @@
             ロール「<strong>{roleToRemove.name}</strong>」を削除してもよろしいですか？
         </div>
         <div class="modal-buttons">
-            <button class="modal-button confirm" on:click={removeConfirmedRole}>削除</button>
-            <button class="modal-button cancel" on:click={() => { showModal = false; roleToRemove = null; }}>キャンセル</button>
+            <button class="modal-button confirm" onclick={removeConfirmedRole}>削除</button>
+            <button class="modal-button cancel" onclick={() => { showModal = false; roleToRemove = null; }}>キャンセル</button>
         </div>
     </div>
 </div>
@@ -272,7 +272,7 @@
                     {/each}
                 </ul>
             </div>
-            <button class="remove-button" on:click={() => confirmRemoveRole(role)}>削除</button>
+            <button class="remove-button" onclick={() => confirmRemoveRole(role)}>削除</button>
 
         </div>
         {/each}
@@ -287,7 +287,7 @@
                 <option value={role.name}>{role.name}</option>
                 {/each}
             </select>
-            <button on:click={addRole}
+            <button onclick={addRole}
                     disabled={!newRoleName}
                     style="padding: 6px 12px; background-color: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer;">
                 ロール追加

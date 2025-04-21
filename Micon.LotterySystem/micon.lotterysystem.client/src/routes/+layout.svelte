@@ -179,7 +179,7 @@
         <div class="header-left">
             {#if !isLoginPath}
 
-            <button class="menu-button" on:click={toggleDrawer}>☰</button>
+            <button class="menu-button" onclick={toggleDrawer}>☰</button>
             {/if}
             <div class="title">抽選管理システム</div>
         </div>
@@ -187,10 +187,10 @@
     <!-- モバイル用サイドメニュー -->
     {#if drawerOpen}
     <div class="drawer">
-        <button class="drawer-close" on:click={toggleDrawer}>✖ 閉じる</button>
+        <button class="drawer-close" onclick={toggleDrawer}>✖ 閉じる</button>
         <nav>
             {#each menuItems as item}
-            <a href={item.href} on:click={toggleDrawer}>{item.name}</a>
+            <a href={item.href} onclick={toggleDrawer}>{item.name}</a>
             {/each}
         </nav>
     </div>

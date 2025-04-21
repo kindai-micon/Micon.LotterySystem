@@ -153,9 +153,9 @@
 	{/if}
 
 	{#if showActivateButton}
-	<button class="button" on:click={activateTicket}>抽選券を有効化</button>
+	<button class="button" onclick={activateTicket}>抽選券を有効化</button>
 	{/if}
 
 	<!-- 手動で再スキャンしたい場合のボタン -->
-	<button class="rescan" on:click={() => startScanner()}>再スキャン</button>
+	<button class="rescan" onclick={() => startScanner()}>再スキャン</button>
 </div>

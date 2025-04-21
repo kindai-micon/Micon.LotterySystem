@@ -362,7 +362,7 @@
 </style>
 
 {#if loaded}
-<button class="fancy-button" on:click={openNewWindow}>
+<button class="fancy-button" onclick={openNewWindow}>
     結果画面を開く
 </button>
 
@@ -389,14 +389,14 @@
 
     <div class="actions">
         {#if [3,4].includes(getWinningModel(slot.slotId).status)}
-        <button class="fancy-button" on:click={async ()=>
+        <button class="fancy-button" onclick={async ()=>
             await onStopExchange(slot.slotId)}>
             引き換えを中止する
         </button>
         {/if}
 
         {#if getLotteryActionLabel(getWinningModel(slot.slotId).status)}
-        <button class="fancy-button" on:click={async ()=>
+        <button class="fancy-button" onclick={async ()=>
             await onLotteryAction(slot.slotId, getWinningModel(slot.slotId).status)}>
             {getLotteryActionLabel(getWinningModel(slot.slotId).status)}
         </button>
