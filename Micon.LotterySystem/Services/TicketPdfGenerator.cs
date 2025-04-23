@@ -24,7 +24,7 @@ public class TicketPdfGenerator
             {
                 page.Size(PageSizes.A4);
                 page.Margin(20);
-                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Noto Sans JP"));
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Noto Sans JP Medium").Medium());
 
                 page.Content().Grid(grid =>
                 {
@@ -36,14 +36,14 @@ public class TicketPdfGenerator
                         grid.Item().Border(1).Padding(8).Height(150).Width(250).Column(ticketCol =>
                         {
                             // タイトル
-                            ticketCol.Item().AlignCenter().Text(ticket.Name).FontSize(16).FontFamily("Noto Sans JP SemiBold").SemiBold();
+                            ticketCol.Item().AlignCenter().Text(ticket.Name).FontSize(16).FontFamily("Noto Sans JP Bold").Bold();
 
                             // 中段：QR + 番号
                             ticketCol.Item().Row(row =>
                             {
                                 row.Spacing(5);
                                 row.RelativeItem().AlignBottom().Text($"抽選番号：No.{ticket.TicketNumber}")
-                                    .FontFamily("Noto Sans JP SemiBold").FontSize(16).SemiBold();
+                                    .FontFamily("Noto Sans JP Bold").FontSize(16).Bold();
 
                                 row.ConstantItem(100).AlignRight().Height(80)
                                     .Image(GenerateQrCode(ticket.Url), ImageScaling.FitHeight);
