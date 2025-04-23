@@ -155,5 +155,5 @@
         <label for="password">パスワード</label>
         <input type="password" id="password" bind:value={password}>
     </div>
-    <button on:click={handleSubmit}>ログイン</button>
+    <button onclick={handleSubmit}>ログイン</button>
 </div>

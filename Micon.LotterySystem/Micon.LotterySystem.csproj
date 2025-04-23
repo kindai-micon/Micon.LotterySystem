@@ -15,7 +15,10 @@
     </PackageReference>
     <PackageReference Include="Npgsql" Version="9.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+    <PackageReference Include="QuestPDF" Version="2025.4.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="ZXing.Net" Version="0.16.10" />
   </ItemGroup>
 
 	<Target Name="NpmBuild" BeforeTargets="Build">
@@ -35,6 +38,11 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <Folder Include="micon.lotterysystem.client\src\routes\tickets-enabled\" />
+	</ItemGroup>
+	<ItemGroup>
+	  <None Update="fonts\NotoSansJP.ttf">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 	<Target Name="CopyPublish" AfterTargets="Publish">

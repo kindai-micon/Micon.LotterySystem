@@ -339,8 +339,8 @@
             <p class="modal-error">{modalError}</p>
             {/if}
             <div class="modal-buttons">
-                <button class="delete-button" on:click={executeDelete}>削除する</button>
-                <button on:click={closeModal}>キャンセル</button>
+                <button class="delete-button" onclick={executeDelete}>削除する</button>
+                <button onclick={closeModal}>キャンセル</button>
             </div>
         </div>
     </div>
@@ -363,7 +363,7 @@
                 <input type={showPassword ? 'text' : 'password' }
                        id="newPassword"
                        bind:value={newPassword} />
-                <button type="button" class="toggle-text" on:click={() =>
+                <button type="button" class="toggle-text" onclick={() =>
                     showPassword = !showPassword}>
                     {showPassword ? '非表示' : '表示'}
                 </button>
@@ -380,7 +380,7 @@
             {/each}
         </ul>
         {/if}
-        <button on:click={registerUser}>登録</button>
+        <button onclick={registerUser}>登録</button>
     </div>
 
     {#if loading}
@@ -393,7 +393,7 @@
     <ul class="user-list">
         {#each users as user}
         <li class="user-item">
-            <div class="user-info" on:click={() =>
+            <div class="user-info" onclick={() =>
                 goToUserSettings(user.userName)}>
                 <div class="username">{user.userName}</div>
                 <div class="roles">
@@ -403,7 +403,7 @@
                     {/each}
                 </div>
             </div>
-            <button class="delete-button" on:click={() => confirmDelete(user.userName)}>削除</button>
+            <button class="delete-button" onclick={() => confirmDelete(user.userName)}>削除</button>
         </li>
         {/each}
     </ul>

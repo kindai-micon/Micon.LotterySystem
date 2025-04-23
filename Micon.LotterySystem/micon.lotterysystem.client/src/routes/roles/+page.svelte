@@ -208,7 +208,7 @@
     <h2>ロール管理</h2>
     <div class="input-area">
         <input type="text" bind:value={newRoleName} placeholder="新しいロール名" />
-        <button class="add-role-button" on:click={addRole} disabled={!newRoleName.trim()}>追加</button>
+        <button class="add-role-button" onclick={addRole} disabled={!newRoleName.trim()}>追加</button>
     </div>
 
     {#each $roles as role}
@@ -216,7 +216,7 @@
         <div class="role-header">
             {role.name}
             {#if role.name != "Admin"}
-            <button class="delete-button" on:click={() => deleteRole(role.name)}>削除</button>
+            <button class="delete-button" onclick={() => deleteRole(role.name)}>削除</button>
             {/if}
         </div>
 
@@ -227,7 +227,7 @@
                 <input type="checkbox"
                        checked={hasAuthority(role, authority)}
                        disabled={role.name === "Admin"}
-                       on:change={() => toggleAuthority(role.name, authority, hasAuthority(role, authority))}
+                       onchange={() => toggleAuthority(role.name, authority, hasAuthority(role, authority))}
                 />
                 <span class="slider"></span>
             </label>
