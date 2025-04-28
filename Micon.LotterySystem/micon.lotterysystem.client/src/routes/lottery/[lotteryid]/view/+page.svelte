@@ -24,29 +24,36 @@
         const frameCount = data.numberOfFrames;
         const allTickets = data.tickets || [];
 
+        let i1 = 0;
+
+        allTickets.forEach((t, index) => {
+            if (t.status === 3) {
+                const digits = t.number.toString().padStart(digitCount, '0').split('');
+                exchangedNumbers[i1] = digits;
+                i1++;
+            }
+        });
         // 初期表示は全て "-" で埋める
-        displayedNumbers = Array.from({ length: frameCount }, () =>
+        displayedNumbers = Array.from({ length: frameCount - exchangedNumbers.length }, () =>
             Array(digitCount).fill("-")
         );
-
         // 確定済み番号 (status === 2)
         resultNumbers = allTickets
             .filter(t => t.status === 2)
             .map(t => t.number.toString().padStart(digitCount, '0'));
-
+        i1 = 0;
         // 確定している枠にだけ番号を表示
         allTickets.forEach((t, index) => {
             if (t.status === 2) {
                 const digits = t.number.toString().padStart(digitCount, '0').split('');
-                displayedNumbers[index] = digits;
+                displayedNumbers[i1] = digits;
+                i1++;
             }
         });
 
-        // 引換済み枠（別枠として下に表示）
-        exchangedNumbers = allTickets
-            .filter(t => t.status === 4)
-            .map(t => t.number.toString().padStart(digitCount, '0').split(''));
-
+        console.log(resultNumbers);
+        console.log(displayedNumbers);
+        console.log(exchangedNumbers);
         if (data.status == 2) {
             startDrawing();
         }
@@ -182,15 +189,17 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 1rem;
-        max-width: 1400px;
+        padding: 2rem;
+        width: 100%;
+        max-width: 2000px; /* 大きなディスプレイ対応 */
         margin: 0 auto;
         font-family: 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+        box-sizing: border-box;
     }
 
     .lottery-header {
         text-align: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 2.5rem;
         width: 100%;
     }
 
@@ -227,24 +236,61 @@
         }
     }
 
+    /* グリッドのコンテナ */
+    .lottery-grid-container {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        margin: 1rem auto;
+    }
+
+    /* グリッド自体 */
     .lottery-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 1.5rem;
+        gap: 20px; /* 隙間を適切に設定 */
         width: 100%;
-        margin-top: 1rem;
+        justify-content: center;
     }
+
+        /* 要素数による適応的なグリッドレイアウト */
+        .lottery-grid.xs-items {
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            max-width: 500px;
+        }
+
+        .lottery-grid.few-items {
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            max-width: 1000px;
+        }
+
+        .lottery-grid.medium-items {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            max-width: 1400px;
+        }
+
+        .lottery-grid.many-items {
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            max-width: 1800px;
+        }
+
+        .lottery-grid.huge-items {
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            max-width: 2000px;
+        }
 
     .lottery-card {
         background: white;
         border-radius: 16px;
         box-shadow: var(--shadow);
-        padding: 1.2rem;
+        padding: 1.2rem 1rem;
         display: flex;
         flex-direction: column;
         align-items: center;
         transition: var(--transition);
         border: 1px solid rgba(0, 0, 0, 0.05);
+        box-sizing: border-box;
+        overflow: hidden; /* 内容がはみ出さないように */
+        height: 100%; /* 高さを100%に */
     }
 
         .lottery-card:hover {
@@ -265,6 +311,7 @@
         padding: 0.3rem 0.8rem;
         border-radius: 20px;
         margin-bottom: 0.8rem;
+        white-space: nowrap; /* ラベルが折り返さないように */
     }
 
     .exchanged .card-label {
@@ -276,6 +323,8 @@
         display: flex;
         gap: 0.4rem;
         justify-content: center;
+        width: 100%;
+        flex-wrap: nowrap; /* 数字が折り返さないように */
     }
 
     .digit {
@@ -290,6 +339,7 @@
         background: linear-gradient(to bottom, #ffffff, #f2f2f2);
         box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
         transition: var(--transition);
+        flex-shrink: 0; /* 数字が縮まないように */
     }
 
         .digit.spinning {
@@ -327,6 +377,7 @@
         box-shadow: var(--shadow);
         margin: 2rem auto;
         max-width: 600px;
+        width: 90%;
     }
 
     .empty-message {
@@ -335,11 +386,77 @@
         margin-bottom: 1rem;
     }
 
+    /* 超大型ディスプレイ対応 */
+    @media (min-width: 2000px) {
+        .lottery-container {
+            max-width: 80%;
+        }
+
+        .lottery-grid.huge-items {
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        }
+    }
+
+    /* 大型ディスプレイ対応 */
+    @media (min-width: 1600px) and (max-width: 1999px) {
+        .lottery-card {
+            padding: 1.5rem 1.2rem;
+        }
+
+        .digit {
+            font-size: 2rem;
+            width: 2.8rem;
+            height: 3.2rem;
+            line-height: 3.2rem;
+        }
+    }
+
     /* レスポンシブ対応 */
+    @media (max-width: 1400px) {
+        .digit {
+            font-size: 1.7rem;
+            width: 2.3rem;
+            height: 2.8rem;
+            line-height: 2.8rem;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .lottery-grid.many-items,
+        .lottery-grid.huge-items {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
+        }
+
+        .lottery-grid.medium-items {
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .digit {
+            font-size: 1.6rem;
+            width: 2.2rem;
+            height: 2.6rem;
+            line-height: 2.6rem;
+        }
+    }
+
     @media (max-width: 768px) {
-        .lottery-grid {
+        .lottery-container {
+            padding: 1.5rem 1rem;
+        }
+
+        .lottery-grid.many-items,
+        .lottery-grid.huge-items,
+        .lottery-grid.medium-items {
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 14px;
+        }
+
+        .lottery-grid.few-items,
+        .lottery-grid.xs-items {
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 1rem;
+            gap: 14px;
         }
 
         .lottery-title {
@@ -354,16 +471,31 @@
         .digit {
             font-size: 1.5rem;
             width: 2rem;
-            height: 2.5rem;
-            line-height: 2.5rem;
+            height: 2.4rem;
+            line-height: 2.4rem;
+        }
+
+        .lottery-card {
+            padding: 1rem 0.8rem;
         }
     }
 
     @media (max-width: 480px) {
-        .lottery-grid {
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 0.8rem;
+        .lottery-container {
+            padding: 1rem 0.5rem;
         }
+
+        .lottery-grid {
+            gap: 10px;
+        }
+
+            .lottery-grid.many-items,
+            .lottery-grid.huge-items,
+            .lottery-grid.medium-items,
+            .lottery-grid.few-items,
+            .lottery-grid.xs-items {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
 
         .lottery-title {
             font-size: 1.8rem;
@@ -377,12 +509,17 @@
         .digit {
             font-size: 1.2rem;
             width: 1.6rem;
-            height: 2.2rem;
-            line-height: 2.2rem;
+            height: 2rem;
+            line-height: 2rem;
         }
 
         .card-label {
             font-size: 0.8rem;
+        }
+
+        .lottery-card {
+            padding: 0.8rem 0.6rem;
+            border-radius: 12px;
         }
     }
 </style>
@@ -396,28 +533,38 @@
     </div>
 
     {#if visible}
-    <div class="lottery-grid">
-        {#each displayedNumbers as digits, index}
-        <div class="lottery-card">
-            <div class="card-label">No.{index + 1}</div>
-            <div class="digits-container">
-                {#each digits as num}
-                <div class="digit {spinning ? 'spinning' : ''}">{num}</div>
-                {/each}
-            </div>
-        </div>
-        {/each}
+    <!-- 要素数に応じてクラスを動的に設定 -->
+    {@const totalItems = displayedNumbers.length + exchangedNumbers.length}
+    {@const gridClass =
+    totalItems <= 4 ? "xs-items" :
+    totalItems <= 10 ? "few-items" :
+    totalItems <= 20 ? "medium-items" :
+    totalItems <= 35 ? "many-items" : "huge-items"}
 
-        {#each exchangedNumbers as number, index}
-        <div class="lottery-card exchanged">
-            <div class="card-label">引換済 No.{displayedNumbers.length + index + 1}</div>
-            <div class="digits-container">
-                {#each number as numChar}
-                <div class="digit">{numChar}</div>
-                {/each}
+    <div class="lottery-grid-container">
+        <div class="lottery-grid {gridClass}">
+            {#each displayedNumbers as digits, index}
+            <div class="lottery-card">
+                <div class="card-label">No.{index + 1}</div>
+                <div class="digits-container">
+                    {#each digits as num}
+                    <div class="digit {spinning ? 'spinning' : ''}">{num}</div>
+                    {/each}
+                </div>
             </div>
+            {/each}
+
+            {#each exchangedNumbers as number, index}
+            <div class="lottery-card exchanged">
+                <div class="card-label">引換済 No.{displayedNumbers.length + index + 1}</div>
+                <div class="digits-container">
+                    {#each number as numChar}
+                    <div class="digit">{numChar}</div>
+                    {/each}
+                </div>
+            </div>
+            {/each}
         </div>
-        {/each}
     </div>
     {:else}
     <div class="empty-state">
