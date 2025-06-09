@@ -13,37 +13,39 @@
     const menuItems = [
         { name: 'ユーザー管理', href: '/users' },
         { name: 'ロール管理', href: '/roles' },
-        { name: '抽選会', href: '/LotteryGroup' },
+        { name: '抽選会管理', href: '/lottery' },
 
 
     ];
     const unsubscribe = user.subscribe(value => {
         currentUser = value;
     });
+    const isLotteryViewPath = window.location.pathname.match(/\/lottery\/[^\/]+\/view/);
+
     console.log(currentUser);
     onMount(async () => {
-        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial")) {
+        if (!window.location.pathname.startsWith("/login") && !window.location.pathname.startsWith("/initial")&&!window.location.pathname.startsWith("/live") && !window.location.pathname.startsWith("/ticket")&& !isLotteryViewPath) {
 
-            await loadUser();
-            console.log(currentUser);
-            if (currentUser === null) {
+	await loadUser();
+	console.log(currentUser);
+	if (currentUser === null) {
 
-                await goto("/login")
-                isLoginPath = true;
-            }
-            else {
+	await goto("/login")
+	isLoginPath = true;
+	}
+	else {
 
-            }
-        }
-        else {
-            isLoginPath = true;
-        }
-    })
-    let drawerOpen = $state(false);
+	}
+	}
+	else {
+	isLoginPath = true;
+	}
+	})
+	let drawerOpen = $state(false);
 
-    const toggleDrawer = () => {
-        drawerOpen = !drawerOpen;
-    };
+	const toggleDrawer = () => {
+	drawerOpen = !drawerOpen;
+	};
 </script>
 
 <style>
@@ -177,7 +179,7 @@
         <div class="header-left">
             {#if !isLoginPath}
 
-            <button class="menu-button" on:click={toggleDrawer}>☰</button>
+            <button class="menu-button" onclick={toggleDrawer}>☰</button>
             {/if}
             <div class="title">抽選管理システム</div>
         </div>
@@ -185,11 +187,11 @@
     <!-- モバイル用サイドメニュー -->
     {#if drawerOpen}
     <div class="drawer">
-        <button class="drawer-close" on:click={toggleDrawer}>✖ 閉じる</button>
+        <button class="drawer-close" onclick={toggleDrawer}>✖ 閉じる</button>
         <nav>
-            <a href="/users" on:click={toggleDrawer}>ユーザー管理</a>
-            <a href="/roles" on:click={toggleDrawer}>ロール管理</a>
-            <a href="/lottery" on:click={toggleDrawer}>抽選券管理</a>
+            {#each menuItems as item}
+            <a href={item.href} onclick={toggleDrawer}>{item.name}</a>
+            {/each}
         </nav>
     </div>
     {/if}
@@ -201,9 +203,10 @@
         {#if !isLoginPath}
         <aside class="sidebar">
             <nav>
-                <a href="/users">ユーザー管理</a>
-                <a href="/roles">ロール管理</a>
-                <a href="/lottery">抽選券管理</a>
+                {#each menuItems as item}
+                <a href={item.href}>{item.name}</a>
+                {/each}
+
             </nav>
         </aside>
         {/if}
