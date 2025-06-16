@@ -140,6 +140,42 @@ namespace Micon.LotterySystem.Migrations
                     b.ToTable("Authorities");
                 });
 
+            modelBuilder.Entity("Micon.LotterySystem.Models.IssueLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("EndNumber")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuerName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("LotteryGroupDisplayId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("StartNumber")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("IssueLogs");
+                });
+
             modelBuilder.Entity("Micon.LotterySystem.Models.LotteryGroup", b =>
                 {
                     b.Property<Guid>("Id")
@@ -148,6 +184,9 @@ namespace Micon.LotterySystem.Migrations
 
                     b.Property<DateTimeOffset>("Created")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DisplayId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -175,8 +214,11 @@ namespace Micon.LotterySystem.Migrations
                     b.Property<DateTimeOffset>("Created")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTimeOffset>("DeadLine")
+                    b.Property<DateTimeOffset?>("DeadLine")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DisplayId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("LotteryGroupId")
                         .HasColumnType("uuid");
@@ -190,6 +232,12 @@ namespace Micon.LotterySystem.Migrations
                         .HasColumnType("text");
 
                     b.Property<int>("NumberOfFrames")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("Updated")
