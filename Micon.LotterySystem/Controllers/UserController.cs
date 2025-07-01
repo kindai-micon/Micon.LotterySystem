@@ -74,7 +74,7 @@ namespace Micon.LotterySystem.Controllers
                 return Conflict(new IdentityError[] { new () { Code = "adminerror", Description = "AdminUserが一人以上存在する必要があります" } });
             }
             
-            var result = await userManager.DeleteAsync(my);
+            var result = await userManager.DeleteAsync(user);
             if (!result.Succeeded)
             {
                 return BadRequest(result.Errors);
