@@ -15,12 +15,14 @@
             method: 'Get'
         });
 
-
         if (response.ok) {
             const data: bool = await response.json();
             console.log(data);
             if (data) {
                 await goto("/login");
+            } else {
+                // パスコードをバックエンドのコンソールに出力
+                await fetch('/api/user/GetPasscode');
             }
         }
     })
