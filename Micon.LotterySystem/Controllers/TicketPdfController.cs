@@ -102,13 +102,19 @@ public class TicketPdfController : ControllerBase
                 host = GetLocalIPAddress();
             }
 
-            // 決定したスキームに対応するポートを自動検出
-            int? port = GetPortForScheme(scheme);
+            // 実際にアクセスされたポート番号を使用
+            int? port = httpRequest.Host.Port;
+
+            // ポート番号が取得できない場合は標準ポートを使用
+            if (!port.HasValue)
+            {
+                port = scheme == "https" ? 443 : 80;
+            }
 
             // 標準ポート（HTTP:80, HTTPS:443）以外の場合はポート番号を含める
             var portString = "";
-            if ((scheme == "https" && port.HasValue && port != 443) ||
-                (scheme == "http" && port.HasValue && port != 80))
+            if ((scheme == "https" && port != 443) ||
+                (scheme == "http" && port != 80))
             {
                 portString = $":{port}";
             }
@@ -165,25 +171,5 @@ public class TicketPdfController : ControllerBase
         return "localhost"; // フォールバック
     }
 
-    private int? GetPortForScheme(string scheme)
-    {
-        var addressesFeature = _server.Features.Get<IServerAddressesFeature>();
-        if (addressesFeature?.Addresses != null)
-        {
-            foreach (var address in addressesFeature.Addresses)
-            {
-                if (Uri.TryCreate(address, UriKind.Absolute, out var uri))
-                {
-                    if (uri.Scheme.Equals(scheme, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return uri.Port;
-                    }
-                }
-            }
-        }
-
-        // 見つからない場合は標準ポートを返す
-        return scheme == "https" ? 443 : 80;
-    }
 }
 

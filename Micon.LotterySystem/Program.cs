@@ -104,7 +104,13 @@ namespace Micon.LotterySystem
             }
             app.UseCors("AllowAll");
             app.UseWebSockets();
-            app.UseHttpsRedirection();
+
+            // 開発環境ではHTTPSリダイレクトを無効化
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
+
             app.UseStaticFiles();
             app.UseRouting();
 
