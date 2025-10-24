@@ -2,9 +2,14 @@
 using Micon.LotterySystem;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using QuestPDF.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Micon.LotterySystem.Services;
+using Microsoft.Extensions.Configuration;
+using System.Net;
+using System.Net.Sockets;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 
 [Route("api/pdf")]
 [ApiController]
@@ -12,21 +17,24 @@ public class TicketPdfController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly UserManager<ApplicationUser> _userManager;
-    private static List<IssueLog> _issueLogs = new();
+    private readonly ITicketPdfGenerator _pdfGenerator;
+    private readonly IConfiguration _configuration;
+    private readonly IServer _server;
 
 
-    public TicketPdfController(ApplicationDbContext db, UserManager<ApplicationUser> userManager)
+    public TicketPdfController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ITicketPdfGenerator pdfGenerator, IConfiguration configuration, IServer server)
     {
         _db = db;
         _userManager = userManager;
+        _pdfGenerator = pdfGenerator;
+        _configuration = configuration;
+        _server = server;
     }
     [Authorize(Policy = "TicketPublish")]
 
     [HttpPost("generate")]
     public async Task<IActionResult> GeneratePdf([FromBody] TicketRequest request)
     {
-        QuestPDF.Settings.License = LicenseType.Community;
-
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
             return Unauthorized();
@@ -73,18 +81,56 @@ public class TicketPdfController : ControllerBase
         _db.IssueLogs.Add(log);
         await _db.SaveChangesAsync();
 
+        // BaseURL の生成（設定 → 現在のリクエスト情報）
+        string baseUrl = _configuration["LotteryBaseUrl"];
+        if (string.IsNullOrEmpty(baseUrl))
+        {
+            var httpRequest = HttpContext.Request;
+
+            // appsettings.jsonのUseHttpsForQrCode設定を使用、未設定の場合はリクエストのスキームを使用
+            var useHttps = _configuration.GetValue<bool?>("UseHttpsForQrCode");
+            var scheme = useHttps.HasValue
+                ? (useHttps.Value ? "https" : "http")
+                : httpRequest.Scheme;
+
+            var host = httpRequest.Host.Host;
+
+            // localhostの場合はローカルネットワークIPアドレスを取得
+            if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase))
+            {
+                host = GetLocalIPAddress();
+            }
+
+            // 決定したスキームに対応するポートを自動検出
+            int? port = GetPortForScheme(scheme);
+
+            // 標準ポート（HTTP:80, HTTPS:443）以外の場合はポート番号を含める
+            var portString = "";
+            if ((scheme == "https" && port.HasValue && port != 443) ||
+                (scheme == "http" && port.HasValue && port != 80))
+            {
+                portString = $":{port}";
+            }
+
+            baseUrl = $"{scheme}://{host}{portString}/ticket/";
+        }
+        else if (!baseUrl.EndsWith("/"))
+        {
+            baseUrl += "/";
+        }
+
         var ticketInfo = tickets.Select(t => new TicketInfo
         {
             TicketNumber = (int)t.Number,
             Guid = t.DisplayId,
-            Name = lotteryGroup.TicketInfo?.Name ?? "抽選券",
-            Description = lotteryGroup.TicketInfo?.Description ?? "",
-            Warning = lotteryGroup.TicketInfo?.Warning ?? "",
-            Url = TicketInfo.BaseUrl+t.DisplayId.ToString()
+            Name = lotteryGroup.Name + " 抽選券",
+            Description = lotteryGroup.Name,
+            Warning = "当日のみ有効 本券は汚したり破らないよう大切に保管してください",
+            Url = baseUrl + t.DisplayId.ToString()
         }).ToList();
 
-        var generator = new TicketPdfGenerator();
-        var bytes = generator.GenerateTicketsPdf(ticketInfo);
+        var bytes = _pdfGenerator.GenerateTicketsPdf(ticketInfo);
 
         return File(bytes, "application/pdf", "抽選券.pdf");
     }
@@ -104,6 +150,40 @@ public class TicketPdfController : ControllerBase
             .ToList();
 
         return Ok(logs);
+    }
+
+    private string GetLocalIPAddress()
+    {
+        var host = Dns.GetHostEntry(Dns.GetHostName());
+        foreach (var ip in host.AddressList)
+        {
+            if (ip.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return ip.ToString();
+            }
+        }
+        return "localhost"; // フォールバック
+    }
+
+    private int? GetPortForScheme(string scheme)
+    {
+        var addressesFeature = _server.Features.Get<IServerAddressesFeature>();
+        if (addressesFeature?.Addresses != null)
+        {
+            foreach (var address in addressesFeature.Addresses)
+            {
+                if (Uri.TryCreate(address, UriKind.Absolute, out var uri))
+                {
+                    if (uri.Scheme.Equals(scheme, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return uri.Port;
+                    }
+                }
+            }
+        }
+
+        // 見つからない場合は標準ポートを返す
+        return scheme == "https" ? 443 : 80;
     }
 }
 

@@ -13,12 +13,23 @@ using Micon.LotterySystem.Services;
 using System.Text.Json.Serialization;
 using Micon.LotterySystem.Hubs;
 using Microsoft.AspNetCore.HttpOverrides;
+using QuestPDF.Infrastructure;
+using QuestPDF.Drawing;
 namespace Micon.LotterySystem
 {
     public class Program
     {
         public static void Main(string[] args)
         {
+            // Configure QuestPDF settings once at application startup
+            QuestPDF.Settings.License = LicenseType.Community;
+            QuestPDF.Settings.FontDiscoveryPaths.Add(Path.Combine(Directory.GetCurrentDirectory(), "fonts"));
+
+            using (var fontStream = File.OpenRead(Path.Combine(Directory.GetCurrentDirectory(), "fonts", "NotoSansJP.ttf")))
+            {
+                FontManager.RegisterFont(fontStream);
+            }
+
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
@@ -28,6 +39,7 @@ namespace Micon.LotterySystem
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
             });
             builder.Services.AddScoped<IPasscodeService, PasscodeService>();
+            builder.Services.AddScoped<ITicketPdfGenerator, TicketPdfGenerator>();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
@@ -44,7 +56,7 @@ namespace Micon.LotterySystem
                     "AllowAll",
                     builder =>
                     {
-                        builder.AllowAnyOrigin()   // ‚·‚×‚Ä‚ÌƒIƒŠƒWƒ“‚©‚ç‚ÌƒAƒNƒZƒX‚ğ‹–‰Â
+                        builder.AllowAnyOrigin()   // ï¿½ï¿½ï¿½×‚Ä‚ÌƒIï¿½ï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÌƒAï¿½Nï¿½Zï¿½Xï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
                                .AllowAnyMethod()
                                .AllowAnyHeader();
                     });
@@ -105,20 +117,20 @@ namespace Micon.LotterySystem
             app.MapHub<LotteryHub>("/api/lotteryHub");
             app.Use(async (context, next) =>
             {
-                // /api ‚Ån‚Ü‚éƒŠƒNƒGƒXƒg‚Í‚»‚Ì‚Ü‚Üˆ—‚ğ‘±s
+                // /api ï¿½Ånï¿½Ü‚éƒŠï¿½Nï¿½Gï¿½Xï¿½gï¿½Í‚ï¿½ï¿½Ì‚Ü‚Üï¿½ï¿½ï¿½ï¿½ğ‘±s
                 if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)&& !context.Request.Path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase))
                 {
-                    // index.html ‚Ì“à—e‚ğ“Ç‚İ‚Ş
+                    // index.html ï¿½Ì“ï¿½ï¿½eï¿½ï¿½Ç‚İï¿½ï¿½ï¿½
                     var indexPath = Path.Combine(app.Environment.WebRootPath, "index.html");
                     if (File.Exists(indexPath))
                     {
                         context.Response.ContentType = "text/html";
                         await context.Response.SendFileAsync(indexPath);
-                        return; // index.html ‚ğ•Ô‚µ‚½‚çˆ—‚ğI—¹
+                        return; // index.html ï¿½ï¿½Ô‚ï¿½ï¿½ï¿½ï¿½çˆï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½ï¿½
                     }
                 }
 
-                await next(); // /api ‚Ìê‡‚ÍŸ‚Ìƒ~ƒhƒ‹ƒEƒFƒA‚Ö
+                await next(); // /api ï¿½Ìê‡ï¿½Íï¿½ï¿½Ìƒ~ï¿½hï¿½ï¿½ï¿½Eï¿½Fï¿½Aï¿½ï¿½
             });
             using (var sp = app.Services.CreateScope())
             {
