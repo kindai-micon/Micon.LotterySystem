@@ -154,6 +154,14 @@ namespace Micon.LotterySystem.Controllers
             }
             return Ok();
         }
+        [HttpGet(nameof(GetPasscode))]
+        public IActionResult GetPasscode()
+        {
+            var passcode = passcodeService.GetPasscode();
+            Console.WriteLine("passcode:" + passcode);
+            return Ok(new { passcode });
+        }
+
         [HttpPost(nameof(InitialRegister))]
         public async Task<IActionResult> InitialRegister(InitialUser initialUser)
         {
