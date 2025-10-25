@@ -1,137 +1,473 @@
-<script>
-    import { onMount } from 'svelte';
+<script lang="ts">
+    import { onMount, onDestroy } from 'svelte';
     import { page } from '$app/stores';
 
-    let connection;
-    let prizeLevel = "1等";
-    let resultNumbers = [];        // アニメーション対象
-    let exchangedNumbers = [];     // 引き換え済み
-    let spinning = false;
-    let displayedNumbers = [];
-    let visible = true;
-
-    const digitCount = 4;
-    let intervals = [];
-    const lotteryId = $page.params.lotteryid;
-
-    const fetchWinningModel = async () => {
-        const response = await fetch('/api/LotteryExecute/ExecutingSlotState?groupId='+lotteryId);
-        const data = await response.json();
-
-        prizeLevel = data.name;
-        console.log(data);
-
-        console.log(data.tickets);
-
-        const allTickets = data.tickets.slice(0, data.numberOfFrames);
-        console.log(allTickets);
-        resultNumbers = allTickets
-            .filter(t => t.status === 2)
-            .map(t => t.number);
-
-        exchangedNumbers = allTickets
-            .filter(t => t.status === 4)
-            .map(t => t.number);
-
-        displayedNumbers = resultNumbers.map(() => num.toString().slice(-4).split(''));
+    type TicketStatus = {
+        slotName: string | null;
+        merchandise: string | null;
+        number: number;
+        status: string;
+        lotteryGroupId: string | null;
     };
 
-    const startDrawing = () => {
-        spinning = true;
-        displayedNumbers = resultNumbers.map(() => Array(digitCount).fill("?"));
-        intervals = [];
+    // ページのパラメータが変わったら反応するために$pageを監視
+    $: currentTicketId = $page.params.ticketid;
+    let prevTicketId: string | null = null;
 
-        resultNumbers.forEach((number, idx) => {
-            for (let i = 0; i < digitCount; i++) {
-                const interval = setInterval(() => {
-                    displayedNumbers[idx][i] = Math.floor(Math.random() * 10);
-                }, 40 + i * 30);
-                intervals.push({ idx, i, interval });
+    let ticketData: TicketStatus | null = null;
+    let lotteryGroupId: string | null = null;
+
+    let loaded = false;
+    let connection: any;
+    let connectionReady = false;
+
+    // URLパラメータ（ticketId）が変更されたときに反応する
+    $: if (currentTicketId && currentTicketId !== prevTicketId && connectionReady) {
+        handleTicketChange(currentTicketId);
+    }
+
+    async function handleTicketChange(newTicketId: string) {
+        console.log(`URL changed: new ticketId = ${newTicketId}, previous = ${prevTicketId}`);
+        prevTicketId = newTicketId;
+
+        try {
+            if (connection.state === "Connected" && lotteryGroupId) {
+                await connection.invoke("RemoveLotteryGroup", lotteryGroupId);
+                await Load();
+                if (lotteryGroupId) {
+                    await connection.invoke("SetLotteryGroup", lotteryGroupId);
+                    console.log("SetLotteryGroup invoked after URL change");
+                }
+            } else {
+                console.log("Connection not ready, waiting...");
+                connection.onreconnected = async () => {
+                    if (lotteryGroupId) {
+                        await connection.invoke("RemoveLotteryGroup", lotteryGroupId);
+                        await connection.invoke("SetLotteryGroup", lotteryGroupId);
+                        await Load();
+                    }
+                };
             }
-        });
-    };
+        } catch (err) {
+            console.error("Error during ticket change:", err);
+        }
+    }
 
-    const stopDrawing = () => {
-        intervals.forEach(({ idx, i, interval }) => {
-            clearInterval(interval);
-            displayedNumbers[idx][i] = resultNumbers[idx][i];
-        });
-        intervals = [];
-        spinning = false;
-    };
+    onMount(async () => {
+        try {
+            if (connection) {
+                await connection.stop();
+                console.log("Stopped existing connection");
+            }
 
-    onMount(() => {
-        connection = new window.signalR.HubConnectionBuilder()
-            .withUrl("/api/LotteryHub")
-            .withAutomaticReconnect()
-            .build();
+            connection = new window.signalR.HubConnectionBuilder()
+                .withUrl("/api/LotteryHub")
+                .withAutomaticReconnect()
+                .build();
 
-        connection.on("UpdateStatus", async (id) => {
-            await fetchWinningModel()
-            loaded = true;
-        });
+            connection.on("UpdateStatus", async (id: string) => {
+                await Load();
+                loaded = true;
+            });
 
-        connection.on("SubmitLottery", async (id) => {
-            await fetchWinningModel(); // 確定情報で再取得
-            stopDrawing();
-            console.log("SubmitLottery");
-            
-        });
+            connection.on("SetTarget", async (id: string) => {
+                await Load();
+                loaded = true;
+            });
 
-        connection.on("ViewStop", (id) => {
-            visible = true;
-            console.log("ViewStop");
-            
-        });
+            connection.on("SubmitLottery", async (id: string) => {
+                await Load();
+                loaded = true;
+            });
 
+            connection.on("ViewStop", async (id: string) => {
+                await Load();
+                loaded = true;
+            });
 
-        connection.start().then(() => {
+            connection.on("ExchangeStop", async (id: string) => {
+                await Load();
+                loaded = true;
+            });
+
+            connection.onreconnected = async (connectionId: string) => {
+                console.log("Reconnected with ID:", connectionId);
+                if (lotteryGroupId) {
+                    await connection.invoke("SetLotteryGroup", lotteryGroupId);
+                    await Load();
+                }
+            };
+
+            await connection.start();
             console.log("SignalR connected");
-            connection.invoke("SetLotteryGroup", lotteryId)
-                .then(() => console.log("SetLotteryGroup invoked"))
-                .catch(err => console.error("SetLotteryGroup error:", err));
-        }).catch(err => console.error("SignalR connection error:", err));
+            connectionReady = true;
 
+            prevTicketId = currentTicketId;
+            await Load();
+            loaded = true;
+        } catch (err) {
+            console.error("SignalR connection setup error:", err);
+            loaded = true;
+        }
     });
+
+    onDestroy(() => {
+        if (connection) {
+            connection.stop()
+                .then(() => console.log("SignalR connection stopped"))
+                .catch(err => console.error("Error stopping SignalR connection:", err));
+        }
+    });
+
+    async function Load() {
+        try {
+            const res = await fetch(`/api/ticket/${currentTicketId}`);
+            const data: TicketStatus = await res.json();
+
+            ticketData = data;
+
+            // lotteryGroupId を取得して、まだグループに参加していなければ参加
+            if (data.lotteryGroupId && data.lotteryGroupId !== lotteryGroupId) {
+                lotteryGroupId = data.lotteryGroupId;
+
+                // 既に接続している場合は新しいグループに参加
+                if (connection && connection.state === "Connected") {
+                    try {
+                        await connection.invoke("SetLotteryGroup", lotteryGroupId);
+                        console.log("Joined lottery group:", lotteryGroupId);
+                    } catch (err) {
+                        console.error("Error joining lottery group:", err);
+                    }
+                }
+            }
+
+            console.log("Loaded ticket data:", ticketData);
+        } catch (error) {
+            console.error("Error loading ticket data:", error);
+        }
+    }
 </script>
 
 
-<style>	
+<style>
+    :global(body) {
+        margin: 0;
+        padding: 0;
+        background-color: #f5f5f5;
+    }
+
     .container {
         display: flex;
         flex-direction: column;
         align-items: center;
+        padding: 1.5rem 1rem;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #f5f5f5 0%, #efefef 100%);
     }
-	
+
+    .header {
+        text-align: center;
+        margin-bottom: 2rem;
+        width: 100%;
+    }
+
+    .header h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+
+    .header p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #666;
+    }
+
 	p {
 	    text-align: center;
+	    margin: 0.5rem 0;
 	}
-	
-	.result {
+
+	.ticket-info {
+	    background-color: #ffffff;
+	    padding: 1.5rem;
+	    border-radius: 12px;
+	    margin-bottom: 1rem;
+	    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+	    width: 100%;
+	    max-width: 450px;
+	}
+
+	.ticket-number-box {
+	    background: linear-gradient(135deg, #3a7d7c 0%, #2d6360 100%);
+	    color: white;
+	    padding: 2rem;
+	    border-radius: 12px;
+	    margin-bottom: 1rem;
 	    text-align: center;
-		font-size: 2rem;
-		font-weight: bold;
+	    box-shadow: 0 4px 12px rgba(58, 125, 124, 0.3);
 	}
-	
-	.heading {
+
+	.ticket-number-label {
+	    font-size: 0.85rem;
+	    opacity: 0.9;
+	    margin-bottom: 0.5rem;
+	    font-weight: 500;
+	}
+
+	.ticket-number {
+	    font-size: 2.5rem;
 	    font-weight: bold;
+	    letter-spacing: 2px;
+	    font-family: 'Courier New', monospace;
+	}
+
+	.heading {
+	    font-weight: 600;
+	    font-size: 0.95rem;
+	    margin-bottom: 0.8rem;
+	    text-transform: uppercase;
+	    letter-spacing: 0.5px;
+	    color: #666;
+	}
+
+	.info-row {
+	    padding: 1rem 0;
+	    border-bottom: 1px solid #f0f0f0;
+	}
+
+	.info-row:last-child {
+	    border-bottom: none;
+	}
+
+	.info-label {
+	    font-size: 0.9rem;
+	    color: #999;
+	    margin-bottom: 0.3rem;
+	    display: block;
+	}
+
+	.info-value {
+	    font-size: 1.2rem;
+	    color: #333;
+	    font-weight: 600;
+	}
+
+	.status-badge {
+	    display: inline-block;
+	    padding: 0.6rem 1.2rem;
+	    border-radius: 20px;
+	    font-weight: 600;
+	    font-size: 1rem;
+	    margin-top: 0.5rem;
+	}
+
+	.status-invalid {
+	    background-color: #f0f0f0;
+	    color: #999;
+	}
+
+	.status-valid {
+	    background-color: #e8f5e9;
+	    color: #2e7d32;
+	}
+
+	.status-winner {
+	    background-color: #fff3e0;
+	    color: #e65100;
+	}
+
+	.status-exchanged {
+	    background-color: #e8f5e9;
+	    color: #1b5e20;
+	}
+
+	.alert-box {
+	    margin-top: 1.5rem;
+	    padding: 1.5rem;
+	    border-radius: 12px;
+	    text-align: center;
+	    width: 100%;
+	    max-width: 450px;
+	    font-weight: 600;
+	}
+
+	.alert-winner {
+	    background-color: #fff8e1;
+	    border: 2px solid #ffc107;
+	    color: #f57f17;
+	    font-size: 1.1rem;
+	}
+
+	.alert-exchanged {
+	    background-color: #e8f5e9;
+	    border: 2px solid #4caf50;
+	    color: #1b5e20;
+	}
+
+	.loading {
+	    text-align: center;
+	    padding: 3rem 1rem;
+	    font-size: 1.1rem;
+	    color: #666;
+	}
+
+	.loading-spinner {
+	    width: 40px;
+	    height: 40px;
+	    border: 4px solid #f0f0f0;
+	    border-top: 4px solid #3a7d7c;
+	    border-radius: 50%;
+	    animation: spin 1s linear infinite;
+	    margin: 0 auto 1rem;
+	}
+
+	@keyframes spin {
+	    0% { transform: rotate(0deg); }
+	    100% { transform: rotate(360deg); }
+	}
+
+	.error-message {
+	    color: #d32f2f;
+	    text-align: center;
+	    padding: 2rem;
+	    font-size: 1rem;
+	}
+
+	/* モバイル最適化 */
+	@media (max-width: 480px) {
+	    .container {
+	        padding: 1rem;
+	    }
+
+	    .header h1 {
+	        font-size: 1.5rem;
+	    }
+
+	    .ticket-number {
+	        font-size: 2rem;
+	    }
+
+	    .ticket-number-box {
+	        padding: 1.5rem;
+	    }
+
+	    .info-value {
+	        font-size: 1.1rem;
+	    }
+
+	    .status-badge {
+	        padding: 0.5rem 1rem;
+	        font-size: 0.95rem;
+	    }
 	}
 </style>
 
-{#if visible}
-<div class="container">
-	<h2>あなたの抽選結果</h2>
-	<p class="result">当選！</p>
+{#if loaded}
+	{#if ticketData}
+	<div class="container">
+		<div class="header">
+			<h1>チケット確認</h1>
+			<p>QRコード読み込み完了</p>
+		</div>
 
-	<div>
-		<p class="heading">あなたの抽選券番号</p>
-		<p>1234567</p>
+		<!-- チケット番号 -->
+		<div class="ticket-number-box">
+			<div class="ticket-number-label">抽選券番号</div>
+			<div class="ticket-number">{ticketData.number}</div>
+		</div>
+
+		<!-- チケット詳細情報 -->
+		<div class="ticket-info">
+			<div class="heading">ステータス</div>
+			<div class="status-badge status-{ticketData.status.toLowerCase()}">
+				{#if ticketData.status === 'Invalid'}
+					未有効化
+				{:else if ticketData.status === 'Valid'}
+					有効
+				{:else if ticketData.status === 'Winner'}
+					当選 🎉
+				{:else if ticketData.status === 'Exchanged'}
+					交換済み ✓
+				{:else}
+					{ticketData.status}
+				{/if}
+			</div>
+
+			{#if ticketData.slotName}
+			<div class="info-row">
+				<span class="info-label">当選景品</span>
+				<div class="info-value">{ticketData.slotName}</div>
+				{#if ticketData.merchandise}
+				<div style="font-size: 0.85rem; color: #999; margin-top: 0.3rem;">
+					{ticketData.merchandise}
+				</div>
+				{/if}
+			</div>
+			{/if}
+		</div>
+
+		<!-- 当選アラート -->
+		{#if ticketData.status === 'Winner'}
+		<div class="alert-box alert-winner">
+			<div style="font-size: 1.3rem; margin-bottom: 0.5rem;">🎉</div>
+			<div>おめでとうございます！</div>
+			<div style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 400;">
+				このチケットは当選しました
+			</div>
+		</div>
+		{/if}
+
+		<!-- 交換済みアラート -->
+		{#if ticketData.status === 'Exchanged'}
+		<div class="alert-box alert-exchanged">
+			<div style="font-size: 1.3rem; margin-bottom: 0.5rem;">✓</div>
+			<div>交換済みです</div>
+			<div style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 400;">
+				このチケットはすでに景品と交換されました
+			</div>
+		</div>
+		{/if}
+
+		<!-- 有効なチケット説明 -->
+		{#if ticketData.status === 'Valid' && !ticketData.slotName}
+		<div class="alert-box" style="background-color: #e3f2fd; border: 2px solid #2196f3; color: #1565c0;">
+			<div style="font-size: 1.3rem; margin-bottom: 0.5rem;">📋</div>
+			<div>現在参加中</div>
+			<div style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 400;">
+				このチケットは抽選に参加中です
+			</div>
+		</div>
+		{/if}
+
+		<!-- 無効なチケット説明 -->
+		{#if ticketData.status === 'Invalid'}
+		<div class="alert-box" style="background-color: #f5f5f5; border: 2px solid #999; color: #666;">
+			<div style="font-size: 1.3rem; margin-bottom: 0.5rem;">⏳</div>
+			<div>未有効化</div>
+			<div style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 400;">
+				このチケットはまだ有効化されていません
+			</div>
+		</div>
+		{/if}
 	</div>
-
-	<p>
-		<!-- TODO: ページ遷移先を変更 -->
-		<a href="/login">当選番号の結果はこちら</a>
-	</p>
-	
+	{:else}
+	<div class="container">
+		<div class="error-message">
+			<div style="font-size: 1.5rem; margin-bottom: 1rem;">❌</div>
+			<p>チケット情報が見つかりません</p>
+			<p style="font-size: 0.9rem; margin-top: 1rem; color: #999;">
+				QRコードをもう一度読み込んでください
+			</p>
+		</div>
+	</div>
+	{/if}
+{:else}
+<div class="container">
+	<div class="loading">
+		<div class="loading-spinner"></div>
+		<p>チケット情報を読み込み中...</p>
+	</div>
 </div>
 {/if}

@@ -97,7 +97,9 @@ namespace Micon.LotterySystem.Controllers
         [HttpGet("{guid}")]
         public async Task<IActionResult> GetStatus(Guid guid)
         {
-            var ticket = await _db.Tickets.FirstOrDefaultAsync(t => t.DisplayId == guid);
+            var ticket = await _db.Tickets
+                .Include(t => t.LotteryGroup)
+                .FirstOrDefaultAsync(t => t.DisplayId == guid);
             if (ticket == null)
                 return NotFound("チケットが見つかりません");
             var slot = _db.LotterySlots.Where(x => x.Tickets.Any(x => x.Id == ticket.Id)).FirstOrDefault();
@@ -108,7 +110,8 @@ namespace Micon.LotterySystem.Controllers
                     slotName = default(string),
                     merchandise = default(string),
                     number = ticket.Number,
-                    status = ticket.Status.ToString()
+                    status = ticket.Status.ToString(),
+                    lotteryGroupId = ticket.LotteryGroup?.DisplayId
                 });
             }
             return Ok(new
@@ -116,7 +119,8 @@ namespace Micon.LotterySystem.Controllers
                 slotName = slot.Name,
                 merchandise = slot.Merchandise,
                 number = ticket.Number,
-                status = ticket.Status.ToString()
+                status = ticket.Status.ToString(),
+                lotteryGroupId = ticket.LotteryGroup?.DisplayId
             });
         }
 
