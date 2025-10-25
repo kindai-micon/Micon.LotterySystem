@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte';
     import { page } from '$app/stores';
+    import { HubConnectionBuilder, HubConnection, HubConnectionState } from '@microsoft/signalr';
 
     type TicketStatus = {
         slotName: string | null;
@@ -18,7 +19,7 @@
     let lotteryGroupId: string | null = null;
 
     let loaded = false;
-    let connection: any;
+    let connection: HubConnection | null = null;
     let connectionReady = false;
 
     // URLパラメータ（ticketId）が変更されたときに反応する
@@ -31,7 +32,11 @@
         prevTicketId = newTicketId;
 
         try {
-            if (connection.state === "Connected" && lotteryGroupId) {
+            if (!connection) {
+                return;
+            }
+
+            if (connection.state === HubConnectionState.Connected && lotteryGroupId) {
                 await connection.invoke("RemoveLotteryGroup", lotteryGroupId);
                 await Load();
                 if (lotteryGroupId) {
@@ -60,7 +65,7 @@
                 console.log("Stopped existing connection");
             }
 
-            connection = new window.signalR.HubConnectionBuilder()
+            connection = new HubConnectionBuilder()
                 .withUrl("/api/LotteryHub")
                 .withAutomaticReconnect()
                 .build();
@@ -112,8 +117,12 @@
     });
 
     onDestroy(() => {
-        if (connection) {
-            connection.stop()
+        const hubConnection = connection;
+        connection = null;
+        connectionReady = false;
+
+        if (hubConnection) {
+            hubConnection.stop()
                 .then(() => console.log("SignalR connection stopped"))
                 .catch(err => console.error("Error stopping SignalR connection:", err));
         }
