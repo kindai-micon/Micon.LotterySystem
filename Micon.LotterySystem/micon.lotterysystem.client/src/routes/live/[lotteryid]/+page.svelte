@@ -1,6 +1,7 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import { page } from '$app/stores';
+    import { HubConnectionBuilder, HubConnection, HubConnectionState } from '@microsoft/signalr';
     let prevGroupId = $page.params.lotteryid;
 
 
@@ -31,27 +32,34 @@
 
     let slots: LotterySlots[] = [];
     let loading = true;
+    let connection: HubConnection | null = null;
+    let connectionReady = false;
     // URLパラメータ（groupId）が変更されたときに反応する
     $: if (currentGroupId && currentGroupId !== prevGroupId && connectionReady) {
         handleGroupChange(currentGroupId);
     }
-    async function handleGroupChange(newGroupId) {
+    async function handleGroupChange(newGroupId: string) {
         console.log(`URL changed: new groupId = ${newGroupId}, previous = ${prevGroupId}`);
         prevGroupId = newGroupId;
 
         try {
             // 接続状態をチェックし、接続されている場合のみinvokeを実行
-            if (connection.state === "Connected") {
-                await connection.invoke("RemoveLotteryGroup", newGroupId);
-                await connection.invoke("SetLotteryGroup", newGroupId);
+            const hubConnection = connection;
+            if (!hubConnection) {
+                return;
+            }
+
+            if (hubConnection.state === HubConnectionState.Connected) {
+                await hubConnection.invoke("RemoveLotteryGroup", newGroupId);
+                await hubConnection.invoke("SetLotteryGroup", newGroupId);
                 console.log("SetLotteryGroup invoked after URL change");
                 await fetchLotteryData();
             } else {
                 console.log("Connection not ready, waiting...");
-                // 接続が確立していない場合は、接続状態が変わるのを待つ
-                connection.onreconnected = async () => {
-                    await connection.invoke("RemoveLotteryGroup", newGroupId);
-                    await connection.invoke("SetLotteryGroup", newGroupId);
+                // 接続がまだ完了していない場合は、接続完了後に再試行
+                hubConnection.onreconnected = async () => {
+                    await hubConnection.invoke("RemoveLotteryGroup", newGroupId);
+                    await hubConnection.invoke("SetLotteryGroup", newGroupId);
                     await fetchLotteryData();
                 };
             }
@@ -59,6 +67,7 @@
             console.error("Error during group change:", err);
         }
     }
+
 
     async function fetchLotteryData(): Promise<LotterySlots[]> {
         const slotRes = await fetch('/api/LotterySlot/List/'+currentGroupId);
@@ -90,19 +99,22 @@
             if (connection) {
                 await connection.stop();
                 console.log("Stopped existing connection");
+                connectionReady = false;
+                connection = null;
             }
 
-            connection = new window.signalR.HubConnectionBuilder()
+            const hubConnection = new HubConnectionBuilder()
                 .withUrl("/api/LotteryHub")
                 .withAutomaticReconnect()
                 .build();
+            connection = hubConnection;
 
-            connection.on("UpdateStatus", async (id) => {
+            hubConnection.on("UpdateStatus", async (id) => {
                 await fetchLotteryData();
                 loading = false;
             });
 
-            connection.on("SubmitLottery", async (id) => {
+            hubConnection.on("SubmitLottery", async (id) => {
                 await fetchLotteryData();
                 loading = false;
 
@@ -110,7 +122,7 @@
             });
 
 
-            connection.on("ExchangeStop", async (id) => {
+            hubConnection.on("ExchangeStop", async (id) => {
                 await fetchLotteryData();
                 loading = false;
 
@@ -120,30 +132,41 @@
             // 重複したイベントハンドラを削除（2回ViewStopが登録されていた）
 
             // 接続が確立したときに実行
-            connection.onreconnected = async (connectionId) => {
+            hubConnection.onreconnected = async (connectionId) => {
                 console.log("Reconnected with ID:", connectionId);
                 if (currentGroupId) {
-                    await connection.invoke("SetLotteryGroup", currentGroupId);
+                    await hubConnection.invoke("SetLotteryGroup", currentGroupId);
                     await fetchLotteryData();
                     loading = false;
                 }
             };
 
-            await connection.start();
+            await hubConnection.start();
             console.log("SignalR connected");
+            connectionReady = true;
 
             // 初期接続時にグループIDを設定
             prevGroupId = currentGroupId;
-            await connection.invoke("SetLotteryGroup", currentGroupId);
+            if (currentGroupId) {
+                await hubConnection.invoke("SetLotteryGroup", currentGroupId);
+            }
             console.log("SetLotteryGroup invoked initially");
         }
         catch (err) {
             console.error("SignalR connection setup error:", err);
-            
+            connectionReady = false;
         }
         slots = await fetchLotteryData();
         loading = false;
     });
+    onDestroy(() => {
+        if (connection) {
+            connection.stop().catch(err => console.error("Error stopping SignalR connection:", err));
+        }
+        connection = null;
+        connectionReady = false;
+    });
+
 </script>
 
 <style>

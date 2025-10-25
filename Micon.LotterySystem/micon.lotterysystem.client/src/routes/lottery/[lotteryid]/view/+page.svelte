@@ -1,8 +1,11 @@
 ﻿<script>
-    import { onMount } from 'svelte';
+    import { onMount, onDestroy } from 'svelte';
     import { page } from '$app/stores';
+    import { HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 
-    let connection;
+    /** @type {import('@microsoft/signalr').HubConnection | null} */
+    let connection = null;
+    let connectionReady = false;
     let prizeLevel = "";
     let resultNumbers = [];
     let exchangedNumbers = [];
@@ -93,7 +96,10 @@
 
         try {
             // 接続状態をチェックし、接続されている場合のみinvokeを実行
-            if (connection.state === "Connected") {
+            if (!connection) {
+                return;
+            }
+            if (connection.state === HubConnectionState.Connected) {
                 await connection.invoke("RemoveLotteryGroup", newGroupId);
                 await connection.invoke("SetLotteryGroup", newGroupId);
                 console.log("SetLotteryGroup invoked after URL change");
@@ -120,7 +126,7 @@
         } catch (error) {
             console.error("Error in fetchWinningModel:", error);
         }
-        connection = new window.signalR.HubConnectionBuilder()
+        connection = new HubConnectionBuilder()
             .withUrl("/api/LotteryHub")
             .withAutomaticReconnect()
             .build();
@@ -167,10 +173,19 @@
 
         connection.start().then(() => {
             console.log("SignalR connected");
-            connection.invoke("SetLotteryGroup", lotteryId)
+            connectionReady = true;
+            return connection.invoke("SetLotteryGroup", lotteryId)
                 .then(() => console.log("SetLotteryGroup invoked"))
                 .catch(err => console.error("SetLotteryGroup error:", err));
         }).catch(err => console.error("SignalR connection error:", err));
+    });
+
+    onDestroy(() => {
+        if (connection) {
+            connection.stop().catch(err => console.error("Error stopping SignalR connection:", err));
+        }
+        connection = null;
+        connectionReady = false;
     });
 </script>
 
