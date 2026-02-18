@@ -15,7 +15,10 @@ public class TicketPdfGenerator
     {
         QuestPDF.Settings.License = LicenseType.Community;
         QuestPDF.Settings.FontDiscoveryPaths.Add(Path.Combine(Directory.GetCurrentDirectory(),"fonts"));
-        FontManager.RegisterFont(File.OpenRead(Path.Combine(Directory.GetCurrentDirectory(), "fonts", "NotoSansJP.ttf")));
+        using (var fontStream = File.OpenRead(Path.Combine(Directory.GetCurrentDirectory(), "fonts", "NotoSansJP.ttf")))
+        {
+            FontManager.RegisterFont(fontStream);
+        }
         using var stream = new MemoryStream();
 
         Document.Create(container =>
