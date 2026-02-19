@@ -40,14 +40,38 @@ namespace Micon.LotterySystem
             });
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy(
-                    "AllowAll",
-                    builder =>
-                    {
-                        builder.AllowAnyOrigin()   // ‚·‚×‚Ä‚ÌƒIƒŠƒWƒ“‚©‚ç‚ÌƒAƒNƒZƒX‚ğ‹–‰Â
-                               .AllowAnyMethod()
-                               .AllowAnyHeader();
-                    });
+                if (builder.Environment.IsDevelopment())
+                {
+                    options.AddPolicy(
+                        "AllowAll",
+                        policy =>
+                        {
+                            policy.AllowAnyOrigin()
+                                  .AllowAnyMethod()
+                                  .AllowAnyHeader();
+                        });
+                }
+                else
+                {
+                    var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
+                    options.AddPolicy(
+                        "AllowAll",
+                        policy =>
+                        {
+                            if (allowedOrigins.Length > 0)
+                            {
+                                policy.WithOrigins(allowedOrigins)
+                                      .AllowAnyMethod()
+                                      .AllowAnyHeader()
+                                      .AllowCredentials();
+                            }
+                            else
+                            {
+                                policy.AllowAnyMethod()
+                                      .AllowAnyHeader();
+                            }
+                        });
+                }
             });
             builder.Services.AddAuthorization(options =>
             {
@@ -105,20 +129,20 @@ namespace Micon.LotterySystem
             app.MapHub<LotteryHub>("/api/lotteryHub");
             app.Use(async (context, next) =>
             {
-                // /api ‚Ån‚Ü‚éƒŠƒNƒGƒXƒg‚Í‚»‚Ì‚Ü‚Üˆ—‚ğ‘±s
+                // /api ï¿½Ånï¿½Ü‚éƒŠï¿½Nï¿½Gï¿½Xï¿½gï¿½Í‚ï¿½ï¿½Ì‚Ü‚Üï¿½ï¿½ï¿½ï¿½ğ‘±s
                 if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)&& !context.Request.Path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase))
                 {
-                    // index.html ‚Ì“à—e‚ğ“Ç‚İ‚Ş
+                    // index.html ï¿½Ì“ï¿½ï¿½eï¿½ï¿½Ç‚İï¿½ï¿½ï¿½
                     var indexPath = Path.Combine(app.Environment.WebRootPath, "index.html");
                     if (File.Exists(indexPath))
                     {
                         context.Response.ContentType = "text/html";
                         await context.Response.SendFileAsync(indexPath);
-                        return; // index.html ‚ğ•Ô‚µ‚½‚çˆ—‚ğI—¹
+                        return; // index.html ï¿½ï¿½Ô‚ï¿½ï¿½ï¿½ï¿½çˆï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½ï¿½
                     }
                 }
 
-                await next(); // /api ‚Ìê‡‚ÍŸ‚Ìƒ~ƒhƒ‹ƒEƒFƒA‚Ö
+                await next(); // /api ï¿½Ìê‡ï¿½Íï¿½ï¿½Ìƒ~ï¿½hï¿½ï¿½ï¿½Eï¿½Fï¿½Aï¿½ï¿½
             });
             using (var sp = app.Services.CreateScope())
             {
