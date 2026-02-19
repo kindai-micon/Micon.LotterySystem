@@ -42,7 +42,10 @@ namespace Micon.LotterySystem.Controllers
         public async Task<IActionResult> Create(LotterySlots lotterySlots)
         {
             var group = await applicationDbContext.LotteryGroups.FirstOrDefaultAsync(x => x.DisplayId.ToString() == lotterySlots.LotteryId);
-
+            if (group == null)
+            {
+                return NotFound();
+            }
             var slots = await applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id)
                 .OrderBy(x => x.Order)
                 .ToListAsync();
@@ -63,11 +66,19 @@ namespace Micon.LotterySystem.Controllers
         public async Task<IActionResult> Update(LotterySlots lotterySlots)
         {
             var group = await applicationDbContext.LotteryGroups.FirstOrDefaultAsync(x => x.DisplayId.ToString() == lotterySlots.LotteryId);
+            if (group == null)
+            {
+                return NotFound();
+            }
             var slots = await applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id)
                 .OrderBy(x => x.Order)
                 .ToListAsync();
 
             var target = slots.FirstOrDefault(x => x.DisplayId.ToString() == lotterySlots.SlotId);
+            if (target == null)
+            {
+                return NotFound();
+            }
             target.Name = lotterySlots.Name;
             target.Merchandise = lotterySlots.Merchandise;
             target.DeadLine = (lotterySlots.DeadLine ?? DateTimeOffset.MaxValue).ToOffset(new TimeSpan(0));
@@ -85,6 +96,10 @@ namespace Micon.LotterySystem.Controllers
                 .Include(x=>x.LotteryGroup)
                 .Select(x => x.LotteryGroup)
                 .FirstOrDefaultAsync();
+            if (group == null)
+            {
+                return NotFound();
+            }
             var slots = await applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id)
                 .OrderBy(x => x.Order)
                 .ToListAsync();
@@ -117,6 +132,10 @@ namespace Micon.LotterySystem.Controllers
                 .ToListAsync();
 
             var target = slots.FirstOrDefault(x => x.DisplayId.ToString() == moveIndex.Id);
+            if (target == null)
+            {
+                return NotFound();
+            }
             slots.Remove(target);
             slots.Insert(moveIndex.newIndex, target);
             slots = slots.Select((x, i) => { x.Order = i; return x; }).ToList();
