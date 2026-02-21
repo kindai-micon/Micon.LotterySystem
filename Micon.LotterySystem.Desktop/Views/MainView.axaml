@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Micon.LotterySystem.Desktop.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="Micon.LotterySystem.Desktop.Views.MainView"
+             x:DataType="vm:MainViewModel">
+
+    <Design.DataContext>
+        <vm:MainViewModel/>
+    </Design.DataContext>
+
+    <Grid>
+        <DockPanel>
+            <Menu DockPanel.Dock="Top">
+                <MenuItem Header="ファイル">
+                    <MenuItem Header="ログアウト" Command="{Binding LogoutCommand}"/>
+                </MenuItem>
+            </Menu>
+
+            <Grid Margin="20">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="{Binding StatusMessage}" FontSize="18"/>
+                    <TextBlock Text="メイン画面（実装予定）" Foreground="Gray"/>
+                </StackPanel>
+            </Grid>
+        </DockPanel>
+    </Grid>
+
+</UserControl>
