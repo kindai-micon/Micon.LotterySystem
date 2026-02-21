@@ -69,7 +69,7 @@ namespace Micon.LotterySystem.Services
             var refreshToken = new RefreshToken
             {
                 Token = GenerateSecureToken(),
-                UserId = user.Id.ToString(),
+                UserId = user.Id,
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(_refreshTokenExpirationDays),
                 CreatedAt = DateTimeOffset.UtcNow,
                 IsRevoked = false
