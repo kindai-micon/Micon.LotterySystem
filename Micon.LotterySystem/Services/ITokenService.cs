@@ -19,5 +19,15 @@ namespace Micon.LotterySystem.Services
         /// 古いリフレッシュトークンは無効化され、新しいものに置き換わります
         /// </summary>
         Task<(string? AccessToken, RefreshToken? RefreshToken, string? Error)> RefreshAccessTokenAsync(string refreshToken);
+
+        /// <summary>
+        /// アクセストークンの有効期限（秒）
+        /// </summary>
+        int AccessTokenExpirationSeconds { get; }
+
+        /// <summary>
+        /// リフレッシュトークンの有効期限（秒）
+        /// </summary>
+        int RefreshTokenExpirationSeconds { get; }
     }
 }

@@ -12,12 +12,21 @@ namespace Micon.LotterySystem.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _dbContext;
+        private readonly int _accessTokenExpirationMinutes;
+        private readonly int _refreshTokenExpirationDays;
 
         public TokenService(IConfiguration configuration, ApplicationDbContext dbContext)
         {
             _configuration = configuration;
             _dbContext = dbContext;
+
+            var jwtSettings = _configuration.GetSection("JwtSettings");
+            _accessTokenExpirationMinutes = int.Parse(jwtSettings["AccessTokenExpirationMinutes"] ?? "15");
+            _refreshTokenExpirationDays = int.Parse(jwtSettings["RefreshTokenExpirationDays"] ?? "30");
         }
+
+        public int AccessTokenExpirationSeconds => _accessTokenExpirationMinutes * 60;
+        public int RefreshTokenExpirationSeconds => _refreshTokenExpirationDays * 24 * 60 * 60;
 
         public string GenerateAccessToken(ApplicationUser user, IList<string> roles)
         {
@@ -26,7 +35,6 @@ namespace Micon.LotterySystem.Services
                 ?? throw new InvalidOperationException("JWT SecretKey is not configured");
             var issuer = jwtSettings["Issuer"];
             var audience = jwtSettings["Audience"];
-            var expirationMinutes = int.Parse(jwtSettings["AccessTokenExpirationMinutes"] ?? "15");
 
             var claims = new List<Claim>
             {
@@ -48,7 +56,7 @@ namespace Micon.LotterySystem.Services
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(expirationMinutes),
+                expires: DateTime.UtcNow.AddMinutes(_accessTokenExpirationMinutes),
                 signingCredentials: credentials
             );
 
@@ -57,15 +65,12 @@ namespace Micon.LotterySystem.Services
 
         public async Task<RefreshToken> GenerateRefreshTokenAsync(ApplicationUser user)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var expirationDays = int.Parse(jwtSettings["RefreshTokenExpirationDays"] ?? "30");
-
             // マルチデバイス対応: 既存のトークンは無効化せず、新しいトークンを追加
             var refreshToken = new RefreshToken
             {
                 Token = GenerateSecureToken(),
                 UserId = user.Id.ToString(),
-                ExpiresAt = DateTimeOffset.UtcNow.AddDays(expirationDays),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(_refreshTokenExpirationDays),
                 CreatedAt = DateTimeOffset.UtcNow,
                 IsRevoked = false
             };
