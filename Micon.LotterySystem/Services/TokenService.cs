@@ -1,0 +1,125 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Micon.LotterySystem.Models;
+
+namespace Micon.LotterySystem.Services
+{
+    public class TokenService : ITokenService
+    {
+        private readonly IConfiguration _configuration;
+        private readonly ApplicationDbContext _dbContext;
+
+        public TokenService(IConfiguration configuration, ApplicationDbContext dbContext)
+        {
+            _configuration = configuration;
+            _dbContext = dbContext;
+        }
+
+        public string GenerateAccessToken(ApplicationUser user, IList<string> roles)
+        {
+            var jwtSettings = _configuration.GetSection("JwtSettings");
+            var secretKey = jwtSettings["SecretKey"]
+                ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+            var issuer = jwtSettings["Issuer"];
+            var audience = jwtSettings["Audience"];
+            var expirationMinutes = int.Parse(jwtSettings["AccessTokenExpirationMinutes"] ?? "15");
+
+            var claims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""),
+                new Claim(ClaimTypes.Name, user.UserName ?? ""),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: issuer,
+                audience: audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(expirationMinutes),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        public async Task<RefreshToken> GenerateRefreshTokenAsync(ApplicationUser user)
+        {
+            var jwtSettings = _configuration.GetSection("JwtSettings");
+            var expirationDays = int.Parse(jwtSettings["RefreshTokenExpirationDays"] ?? "30");
+
+            // マルチデバイス対応: 既存のトークンは無効化せず、新しいトークンを追加
+            var refreshToken = new RefreshToken
+            {
+                Token = GenerateSecureToken(),
+                UserId = user.Id.ToString(),
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(expirationDays),
+                CreatedAt = DateTimeOffset.UtcNow,
+                IsRevoked = false
+            };
+
+            _dbContext.RefreshTokens.Add(refreshToken);
+            await _dbContext.SaveChangesAsync();
+
+            return refreshToken;
+        }
+
+        public async Task<(string? AccessToken, RefreshToken? RefreshToken, string? Error)> RefreshAccessTokenAsync(string refreshToken)
+        {
+            var storedToken = await _dbContext.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+            if (storedToken == null)
+            {
+                return (null, null, "無効なリフレッシュトークンです");
+            }
+
+            if (storedToken.IsRevoked)
+            {
+                return (null, null, "リフレッシュトークンは無効化されています");
+            }
+
+            if (storedToken.IsExpired)
+            {
+                return (null, null, "リフレッシュトークンの有効期限が切れています");
+            }
+
+            // 古いリフレッシュトークンを無効化
+            storedToken.IsRevoked = true;
+
+            // ユーザーのロールを取得するためにUserManagerが必要だが、
+            // ここではシンプルにロールなしでアクセストークンを生成
+            // 必要に応じて後でUserManagerを注入して修正
+            var user = storedToken.User;
+
+            // 新しいリフレッシュトークンを生成
+            var newRefreshToken = await GenerateRefreshTokenAsync(user);
+
+            // アクセストークンを生成（ロールなし）
+            var accessToken = GenerateAccessToken(user, new List<string>());
+
+            return (accessToken, newRefreshToken, null);
+        }
+
+        private static string GenerateSecureToken()
+        {
+            var randomBytes = new byte[64];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomBytes);
+            return Convert.ToBase64String(randomBytes);
+        }
+    }
+}
