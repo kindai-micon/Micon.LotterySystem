@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Micon.LotterySystem.Models;
@@ -12,13 +13,18 @@ namespace Micon.LotterySystem.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _dbContext;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly int _accessTokenExpirationMinutes;
         private readonly int _refreshTokenExpirationDays;
 
-        public TokenService(IConfiguration configuration, ApplicationDbContext dbContext)
+        public TokenService(
+            IConfiguration configuration,
+            ApplicationDbContext dbContext,
+            UserManager<ApplicationUser> userManager)
         {
             _configuration = configuration;
             _dbContext = dbContext;
+            _userManager = userManager;
 
             var jwtSettings = _configuration.GetSection("JwtSettings");
             _accessTokenExpirationMinutes = int.Parse(jwtSettings["AccessTokenExpirationMinutes"] ?? "15");
@@ -105,16 +111,16 @@ namespace Micon.LotterySystem.Services
             // 古いリフレッシュトークンを無効化
             storedToken.IsRevoked = true;
 
-            // ユーザーのロールを取得するためにUserManagerが必要だが、
-            // ここではシンプルにロールなしでアクセストークンを生成
-            // 必要に応じて後でUserManagerを注入して修正
             var user = storedToken.User;
+
+            // ユーザーのロールを取得
+            var roles = await _userManager.GetRolesAsync(user);
 
             // 新しいリフレッシュトークンを生成
             var newRefreshToken = await GenerateRefreshTokenAsync(user);
 
-            // アクセストークンを生成（ロールなし）
-            var accessToken = GenerateAccessToken(user, new List<string>());
+            // アクセストークンを生成（ロールあり）
+            var accessToken = GenerateAccessToken(user, roles);
 
             return (accessToken, newRefreshToken, null);
         }
