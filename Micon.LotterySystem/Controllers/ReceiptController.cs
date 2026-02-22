@@ -35,6 +35,7 @@ namespace Micon.LotterySystem.Controllers
         /// 抽選会一覧取得
         /// </summary>
         [HttpGet("lottery-groups")]
+        [Authorize]
         public async Task<IActionResult> GetLotteryGroups()
         {
             var groups = await _db.LotteryGroups
