@@ -10,7 +10,6 @@ namespace Micon.LotterySystem.Desktop.Services;
 
 public class LocalStorageService : ILocalStorageService
 {
-    private const string RecordsFileName = "issued_tickets.json";
     private readonly string _recordsFilePath;
     private readonly ILogger<LocalStorageService> _logger;
     private List<LotteryGroupRecords> _allRecords = [];
@@ -18,7 +17,12 @@ public class LocalStorageService : ILocalStorageService
     public LocalStorageService(ILogger<LocalStorageService> logger)
     {
         _logger = logger;
-        _recordsFilePath = Path.Combine(Directory.GetCurrentDirectory(), RecordsFileName);
+
+        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var appFolder = Path.Combine(appDataPath, "Micon.Lottery");
+        Directory.CreateDirectory(appFolder); // フォルダが存在しない場合は作成
+        _recordsFilePath = Path.Combine(appFolder, "issued_tickets.json");
+
         LoadRecords();
     }
 

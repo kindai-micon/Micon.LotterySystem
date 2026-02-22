@@ -23,7 +23,7 @@ public interface ITokenService
 
 public class TokenService : ITokenService
 {
-    private const string TokenFilePath = "tokens.dat";
+    private readonly string _tokenFilePath;
 
     private string? _accessToken;
     private string? _refreshToken;
@@ -47,6 +47,11 @@ public class TokenService : ITokenService
 
     public TokenService()
     {
+        var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var appFolder = Path.Combine(appDataPath, "Micon.Lottery");
+        Directory.CreateDirectory(appFolder); // フォルダが存在しない場合は作成
+        _tokenFilePath = Path.Combine(appFolder, "tokens.dat");
+
         LoadTokens();
     }
 
@@ -93,7 +98,7 @@ public class TokenService : ITokenService
             // DPAPIで暗号化（現在のユーザーのみ復号可能）
             var encryptedBytes = ProtectedData.Protect(jsonBytes, null, DataProtectionScope.CurrentUser);
 
-            File.WriteAllBytes(TokenFilePath, encryptedBytes);
+            File.WriteAllBytes(_tokenFilePath, encryptedBytes);
         }
         catch
         {
@@ -104,12 +109,12 @@ public class TokenService : ITokenService
 
     private void LoadTokens()
     {
-        if (!File.Exists(TokenFilePath))
+        if (!File.Exists(_tokenFilePath))
             return;
 
         try
         {
-            var encryptedBytes = File.ReadAllBytes(TokenFilePath);
+            var encryptedBytes = File.ReadAllBytes(_tokenFilePath);
 
             // DPAPIで復号化
             var jsonBytes = ProtectedData.Unprotect(encryptedBytes, null, DataProtectionScope.CurrentUser);
@@ -141,8 +146,8 @@ public class TokenService : ITokenService
     {
         try
         {
-            if (File.Exists(TokenFilePath))
-                File.Delete(TokenFilePath);
+            if (File.Exists(_tokenFilePath))
+                File.Delete(_tokenFilePath);
         }
         catch
         {
