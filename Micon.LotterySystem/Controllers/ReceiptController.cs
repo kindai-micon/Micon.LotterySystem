@@ -32,6 +32,24 @@ namespace Micon.LotterySystem.Controllers
         }
 
         /// <summary>
+        /// 抽選会一覧取得
+        /// </summary>
+        [HttpGet("lottery-groups")]
+        public async Task<IActionResult> GetLotteryGroups()
+        {
+            var groups = await _db.LotteryGroups
+                .OrderByDescending(g => g.Created)
+                .Select(g => new
+                {
+                    displayId = g.DisplayId,
+                    name = g.Name
+                })
+                .ToListAsync();
+
+            return Ok(groups);
+        }
+
+        /// <summary>
         /// チケットn枚発行（JSON形式）
         /// </summary>
         [HttpPost("tickets")]
