@@ -1,18 +1,14 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:Micon.LotterySystem.Desktop.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:services="using:Micon.LotterySystem.Desktop.Services"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
         x:Class="Micon.LotterySystem.Desktop.Views.MainWindow"
-        x:DataType="vm:MainViewModel"
-        Title="Micon Lottery System - Desktop"
+        x:DataType="services:NavigationService"
+        Title="抽選券印刷システム"
         Width="800" Height="600">
 
-    <Design.DataContext>
-        <vm:MainViewModel/>
-    </Design.DataContext>
-
-    <ContentControl Content="{Binding CurrentView}"/>
+    <ContentControl Content="{Binding CurrentViewModel}"/>
 
 </Window>

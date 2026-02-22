@@ -4,6 +4,15 @@ using System.Text.Json.Serialization;
 
 namespace Micon.LotterySystem.Desktop.Models;
 
+public class LotteryGroupInfo
+{
+    [JsonPropertyName("displayId")]
+    public Guid DisplayId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+}
+
 public class IssueTicketsRequest
 {
     [JsonPropertyName("count")]

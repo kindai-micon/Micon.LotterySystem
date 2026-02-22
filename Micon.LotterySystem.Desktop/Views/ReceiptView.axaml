@@ -11,58 +11,121 @@
         <vm:ReceiptViewModel/>
     </Design.DataContext>
 
+    <UserControl.Resources>
+        <!-- RadioButtonの丸を非表示にするスタイル -->
+        <ControlTheme x:Key="NoIndicatorRadioButton" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </UserControl.Resources>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- ヘッダー -->
-        <TextBlock Grid.Row="0" Text="チケット印刷" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <!-- 有効モード（帯） -->
+            <Border Background="#C8E6C9" Padding="12,6" CornerRadius="4" Margin="0,0,0,8"
+                    IsVisible="{Binding ActivateOnIssue}">
+                <TextBlock Text="● 有効モード - QRコード読み込みですぐ使用可能"
+                           Foreground="#2E7D32" FontWeight="Bold" FontSize="13"/>
+            </Border>
+            <!-- 無効モード（帯） -->
+            <Border Background="#FFCDD2" Padding="12,6" CornerRadius="4" Margin="0,0,0,8"
+                    IsVisible="{Binding !ActivateOnIssue}">
+                <TextBlock Text="● 無効モード - 管理者による有効化が必要"
+                           Foreground="#C62828" FontWeight="Bold" FontSize="13"/>
+            </Border>
+            <!-- 抽選会名 - 抽選券印刷 -->
+            <TextBlock FontSize="24" FontWeight="Bold">
+                <Run Text="{Binding LotteryGroupName}"/>
+                <Run Text=" - 抽選券印刷"/>
+            </TextBlock>
+        </StackPanel>
 
         <!-- 印刷フォーム -->
-        <StackPanel Grid.Row="1" Spacing="15">
-            <Grid ColumnDefinitions="Auto,*,Auto,*" Margin="0,0,0,10">
-                <TextBlock Text="抽選会ID:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                <TextBox Grid.Column="1" Text="{Binding LotteryGroupId}" Watermark="GUIDを入力"/>
-                <TextBlock Grid.Column="2" Text="発行枚数:" VerticalAlignment="Center" Margin="20,0,10,0"/>
-                <NumericUpDown Grid.Column="3" Value="{Binding TicketCount}" Minimum="1" Maximum="100"/>
-            </Grid>
+        <StackPanel Grid.Row="1" Spacing="15" Margin="0,0,0,20">
+            <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,10">
+                <TextBlock Text="発行枚数:" VerticalAlignment="Center"/>
+                <NumericUpDown Value="{Binding TicketCount}" Minimum="1" Maximum="1000" Width="120"
+                               IsEnabled="{Binding !IsLoading}" Increment="1" FormatString="F0"/>
+            </StackPanel>
 
             <!-- ステータス選択 -->
             <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="5" Padding="10">
                 <StackPanel Spacing="10">
                     <TextBlock Text="発行状態" FontWeight="Bold"/>
 
-                    <Grid ColumnDefinitions="*,*" Margin="0,5,0,0">
-                        <CheckBox Grid.Column="0" Content="有効状態で発行"
-                                  IsChecked="{Binding ActivateOnIssue}"
-                                  IsEnabled="{Binding !IsLoading}"/>
+                    <!-- RadioButton風の選択ボタン -->
+                    <Grid ColumnDefinitions="*,*">
+                        <RadioButton Grid.Column="0"
+                                     Theme="{StaticResource NoIndicatorRadioButton}"
+                                     IsChecked="{Binding ActivateOnIssue}"
+                                     IsEnabled="{Binding !IsLoading}"
+                                     HorizontalAlignment="Stretch"
+                                     Padding="15,10"
+                                     CornerRadius="5,0,0,5"
+                                     BorderThickness="1"
+                                     BorderBrush="#DDD">
+                            <RadioButton.Styles>
+                                <Style Selector="RadioButton:checked /template/ Border">
+                                    <Setter Property="Background" Value="#4CAF50"/>
+                                    <Setter Property="BorderBrush" Value="#388E3C"/>
+                                </Style>
+                                <Style Selector="RadioButton:checked">
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Style>
+                            </RadioButton.Styles>
+                            <TextBlock Text="有効状態で発行" FontWeight="Bold"/>
+                        </RadioButton>
 
-                        <CheckBox Grid.Column="1" Content="無効状態で発行"
-                                  IsChecked="{Binding !ActivateOnIssue}"
-                                  IsEnabled="{Binding !IsLoading}"/>
+                        <RadioButton Grid.Column="1"
+                                     Theme="{StaticResource NoIndicatorRadioButton}"
+                                     IsChecked="{Binding !ActivateOnIssue}"
+                                     IsEnabled="{Binding !IsLoading}"
+                                     HorizontalAlignment="Stretch"
+                                     Padding="15,10"
+                                     CornerRadius="0,5,5,0"
+                                     BorderThickness="1"
+                                     BorderBrush="#DDD"
+                                     Margin="-1,0,0,0">
+                            <RadioButton.Styles>
+                                <Style Selector="RadioButton:checked /template/ Border">
+                                    <Setter Property="Background" Value="#F44336"/>
+                                    <Setter Property="BorderBrush" Value="#D32F2F"/>
+                                </Style>
+                                <Style Selector="RadioButton:checked">
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Style>
+                            </RadioButton.Styles>
+                            <TextBlock Text="無効状態で発行" FontWeight="Bold"/>
+                        </RadioButton>
                     </Grid>
 
                     <TextBlock Text="{Binding StatusHint}" Foreground="Gray" FontSize="12" Margin="0,5,0,0"/>
                 </StackPanel>
             </Border>
 
-            <!-- ボタン -->
-            <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,10,0,0">
-                <Button Content="クリア" Command="{Binding ClearTicketsCommand}"
-                        IsEnabled="{Binding !IsLoading}" Padding="20,10" Grid.Column="1" Margin="0,0,10,0"/>
-                <Button Content="印刷開始" Command="{Binding PrintTicketsCommand}"
-                        IsEnabled="{Binding !IsLoading}" Padding="30,10" Background="#2196F3"
-                        Foreground="White" FontWeight="Bold" Grid.Column="2"/>
-            </Grid>
-        </StackPanel>
-
-        <!-- 進捗・ステータス表示 -->
-        <StackPanel Grid.Row="2" Margin="0,15,0,0">
-            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="4" Margin="0,0,0,10"/>
+            <!-- 進捗・ステータス表示 -->
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="4" Margin="0,10,0,0"/>
 
             <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsLoading}">
                 <TextBlock Text="{Binding StatusMessage}" Foreground="#666"/>
@@ -78,6 +141,39 @@
 
             <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"
                        IsVisible="{Binding !IsLoading}"/>
+        </StackPanel>
+
+        <!-- 発行履歴 -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="発行履歴" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+
+            <DataGrid Grid.Row="1" ItemsSource="{Binding IssuedTickets}"
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      BorderBrush="#DDD" BorderThickness="1"
+                      GridLinesVisibility="All" HeadersVisibility="Column">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="抽選番号" Binding="{Binding Number}" Width="100"/>
+                    <DataGridTextColumn Header="状態" Binding="{Binding Status}" Width="120"/>
+                    <DataGridTextColumn Header="発行日時" Binding="{Binding IssuedAt, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+
+        <!-- ボタン（左下） -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" Margin="0,20,0,0"
+                    HorizontalAlignment="Left">
+            <Button Content="戻る" Command="{Binding BackCommand}"
+                    Padding="20,10"/>
+            <Button Content="クリア" Command="{Binding ClearCommand}"
+                    IsEnabled="{Binding !IsLoading}" Padding="20,10"/>
+            <Button Content="印刷開始" Command="{Binding PrintTicketsCommand}"
+                    IsEnabled="{Binding !IsLoading}" Padding="30,10" Background="#2196F3"
+                    Foreground="White" FontWeight="Bold"/>
         </StackPanel>
     </Grid>
 

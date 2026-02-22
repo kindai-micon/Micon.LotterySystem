@@ -20,15 +20,23 @@ public class TicketPdfController : ControllerBase
     private readonly ITicketPdfGenerator _pdfGenerator;
     private readonly IConfiguration _configuration;
     private readonly IServer _server;
+    private readonly ITicketIssuanceService _ticketIssuanceService;
 
 
-    public TicketPdfController(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ITicketPdfGenerator pdfGenerator, IConfiguration configuration, IServer server)
+    public TicketPdfController(
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager,
+        ITicketPdfGenerator pdfGenerator,
+        IConfiguration configuration,
+        IServer server,
+        ITicketIssuanceService ticketIssuanceService)
     {
         _db = db;
         _userManager = userManager;
         _pdfGenerator = pdfGenerator;
         _configuration = configuration;
         _server = server;
+        _ticketIssuanceService = ticketIssuanceService;
     }
     [Authorize(Policy = "TicketPublish")]
 
@@ -46,40 +54,26 @@ public class TicketPdfController : ControllerBase
         if (lotteryGroup == null || lotteryGroup.TicketInfo == null)
             return BadRequest("無効な抽選会IDまたはチケット情報が未設定です");
 
-
-        long startNumber = _db.Tickets
-            .Where(t => t.LotteryGroupId == lotteryGroup.Id)
-            .Select(t => t.Number)
-            .ToList()
-            .DefaultIfEmpty(999)
-            .Max() + 1;
-
-        var tickets = new List<Ticket>();
-        for (int i = 0; i < request.Count; i++)
+        TicketIssuanceResult result;
+        try
         {
-            tickets.Add(new Ticket
-            {
-                Number = startNumber + i,
-                LotteryGroupId = lotteryGroup.Id,
-                Status = TicketStatus.Invalid
-            });
+            // チケット発行サービスを使用
+            result = await _ticketIssuanceService.IssueTicketsAsync(
+                request.LotteryGroupId,
+                request.Count,
+                TicketStatus.Invalid,
+                user.UserName ?? "Unknown");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
         }
 
-        _db.Tickets.AddRange(tickets);
-        await _db.SaveChangesAsync();
-
-        var log = new IssueLog
-        {
-            IssuerName = user.UserName ?? "Unknown",
-            IssuedAt = DateTime.UtcNow,
-            Count = request.Count,
-            StartNumber = startNumber,
-            EndNumber = startNumber + request.Count - 1,
-            LotteryGroupDisplayId = request.LotteryGroupId
-        };
-
-        _db.IssueLogs.Add(log);
-        await _db.SaveChangesAsync();
+        var tickets = result.Tickets;
 
         // BaseURL の生成（設定 → 現在のリクエスト情報）
         string baseUrl = _configuration["LotteryBaseUrl"];

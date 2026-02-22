@@ -72,7 +72,8 @@ public partial class LoginViewModel : ViewModelBase
                     result.AccessToken,
                     result.RefreshToken,
                     result.ExpiresIn,
-                    result.RefreshTokenExpiresIn
+                    result.RefreshTokenExpiresIn,
+                    BaseUrl.TrimEnd('/')
                 );
 
                 LoginSucceeded?.Invoke();

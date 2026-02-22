@@ -9,33 +9,37 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Formats.Png;
 using Microsoft.Extensions.Configuration;
+using Micon.LotterySystem.Services;
 
 namespace Micon.LotterySystem.Controllers
 {
     [Route("api/receipt")]
     [ApiController]
-    [Authorize(Policy = "ReceiptTicketPublish")]
+    [Authorize(AuthenticationSchemes = "Bearer", Policy = "ReceiptTicketPublish")]
     public class ReceiptController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly ITicketIssuanceService _ticketIssuanceService;
 
         public ReceiptController(
             ApplicationDbContext db,
             UserManager<ApplicationUser> userManager,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ITicketIssuanceService ticketIssuanceService)
         {
             _db = db;
             _userManager = userManager;
             _configuration = configuration;
+            _ticketIssuanceService = ticketIssuanceService;
         }
 
         /// <summary>
         /// 抽選会一覧取得
         /// </summary>
         [HttpGet("lottery-groups")]
-        [Authorize]
+        [Authorize(AuthenticationSchemes = "Bearer")]
         public async Task<IActionResult> GetLotteryGroups()
         {
             var groups = await _db.LotteryGroups
@@ -60,64 +64,36 @@ namespace Micon.LotterySystem.Controllers
             if (user == null)
                 return Unauthorized();
 
-            var lotteryGroup = await _db.LotteryGroups
-                .Include(g => g.TicketInfo)
-                .FirstOrDefaultAsync(g => g.DisplayId == request.LotteryGroupId);
-
-            if (lotteryGroup == null)
-                return NotFound(new { error = "抽選会が見つかりません" });
-
-            // 次のチケット番号を取得
-            long startNumber = await _db.Tickets
-                .Where(t => t.LotteryGroupId == lotteryGroup.Id)
-                .Select(t => t.Number)
-                .DefaultIfEmpty(999)
-                .MaxAsync() + 1;
-
-            var tickets = new List<Ticket>();
-            for (int i = 0; i < request.Count; i++)
+            try
             {
-                tickets.Add(new Ticket
+                // レシートプリンターからの発行であることをログに残す
+                var issuerName = $"[receipt] {user.UserName ?? "Unknown"}";
+
+                var result = await _ticketIssuanceService.IssueTicketsAsync(
+                    request.LotteryGroupId,
+                    request.Count,
+                    TicketStatus.PrintPublishing,
+                    issuerName);
+
+                var response = new
                 {
-                    Number = startNumber + i,
-                    LotteryGroupId = lotteryGroup.Id,
-                    Status = TicketStatus.PrintPublishing
-                });
+                    tickets = result.Tickets.Select(t => new
+                    {
+                        displayId = t.DisplayId,
+                        number = t.Number,
+                        qrCodeUrl = $"/api/receipt/qrcode/{t.DisplayId}",
+                        status = t.Status.ToString(),
+                        issuedAt = t.Created
+                    }),
+                    lotteryGroupName = result.LotteryGroupName
+                };
+
+                return Ok(response);
             }
-
-            _db.Tickets.AddRange(tickets);
-            await _db.SaveChangesAsync();
-
-            // 発行ログを保存
-            var log = new IssueLog
+            catch (InvalidOperationException ex)
             {
-                IssuerName = user.UserName ?? "Unknown",
-                IssuedAt = DateTime.UtcNow,
-                Count = request.Count,
-                StartNumber = startNumber,
-                EndNumber = startNumber + request.Count - 1,
-                LotteryGroupDisplayId = request.LotteryGroupId
-            };
-
-            _db.IssueLogs.Add(log);
-            await _db.SaveChangesAsync();
-
-            var baseUrl = GetBaseUrl();
-
-            var response = new
-            {
-                tickets = tickets.Select(t => new
-                {
-                    displayId = t.DisplayId,
-                    number = t.Number,
-                    qrCodeUrl = $"/api/receipt/qrcode/{t.DisplayId}",
-                    status = t.Status.ToString(),
-                    issuedAt = t.Created
-                }),
-                lotteryGroupName = lotteryGroup.Name
-            };
-
-            return Ok(response);
+                return NotFound(new { error = ex.Message });
+            }
         }
 
         /// <summary>
