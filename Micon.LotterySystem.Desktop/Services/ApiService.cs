@@ -17,6 +17,11 @@ public interface IApiService
     Task<T?> GetAsync<T>(string endpoint);
     Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data);
     Task<bool> PostAsync<TRequest>(string endpoint, TRequest data);
+
+    // Receipt API
+    Task<IssueTicketsResponse> IssueTicketsAsync(int count, Guid lotteryGroupId);
+    Task<byte[]?> GetQrCodeAsync(Guid displayId);
+    Task<CompleteTicketResponse> CompleteTicketAsync(Guid displayId, bool activate);
 }
 
 public class ApiService : IApiService
@@ -146,7 +151,7 @@ public class ApiService : IApiService
         {
             var refreshResult = await RefreshTokenAsync(_tokenService.RefreshToken!);
 
-            if (refreshResult?.Error == null)
+            if (refreshResult != null && refreshResult.Error == null)
             {
                 _tokenService.SetTokens(
                     refreshResult.AccessToken,
@@ -156,5 +161,48 @@ public class ApiService : IApiService
                 );
             }
         }
+    }
+
+    // Receipt API Methods
+
+    public async Task<IssueTicketsResponse> IssueTicketsAsync(int count, Guid lotteryGroupId)
+    {
+        var result = await PostAsync<IssueTicketsRequest, IssueTicketsResponse>(
+            "api/receipt/tickets",
+            new IssueTicketsRequest { Count = count, LotteryGroupId = lotteryGroupId }
+        );
+
+        return result ?? new IssueTicketsResponse { Error = "チケット発行に失敗しました" };
+    }
+
+    public async Task<byte[]?> GetQrCodeAsync(Guid displayId)
+    {
+        await EnsureValidTokenAsync();
+
+        try
+        {
+            var response = await _httpClient.GetAsync($"api/receipt/qrcode/{displayId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadAsByteArrayAsync();
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<CompleteTicketResponse> CompleteTicketAsync(Guid displayId, bool activate)
+    {
+        var result = await PostAsync<CompleteTicketRequest, CompleteTicketResponse>(
+            $"api/receipt/complete/{displayId}",
+            new CompleteTicketRequest { Activate = activate }
+        );
+
+        return result ?? new CompleteTicketResponse { Success = false, Error = "通信エラー" };
     }
 }

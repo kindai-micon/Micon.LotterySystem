@@ -1,8 +1,10 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Micon.LotterySystem.Desktop.Services;
 using Micon.LotterySystem.Desktop.ViewModels;
@@ -13,10 +15,17 @@ namespace Micon.LotterySystem.Desktop;
 public partial class App : Application
 {
     private IServiceProvider? _serviceProvider;
+    private IConfiguration? _configuration;
 
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+
+        _configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables()
+            .Build();
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -36,7 +45,6 @@ public partial class App : Application
                 DataContext = mainViewModel
             };
 
-            // ログイン状態に応じて初期画面を設定
             if (tokenService.IsAuthenticated)
             {
                 mainViewModel.CurrentView = new MainView { DataContext = mainViewModel };
@@ -46,13 +54,11 @@ public partial class App : Application
                 mainViewModel.CurrentView = new LoginView { DataContext = loginViewModel };
             }
 
-            // ログイン成功時の処理
             loginViewModel.LoginSucceeded += () =>
             {
                 mainViewModel.CurrentView = new MainView { DataContext = mainViewModel };
             };
 
-            // ログアウト時の処理
             mainViewModel.LogoutRequested += () =>
             {
                 var newLoginViewModel = _serviceProvider.GetRequiredService<LoginViewModel>();
@@ -63,6 +69,11 @@ public partial class App : Application
                 mainViewModel.CurrentView = new LoginView { DataContext = newLoginViewModel };
             };
 
+            mainViewModel.NavigateRequested += (view) =>
+            {
+                mainViewModel.CurrentView = view;
+            };
+
             desktop.MainWindow = mainWindow;
         }
 
@@ -71,6 +82,7 @@ public partial class App : Application
 
     private void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton(_configuration!);
         services.AddSingleton<ITokenService, TokenService>();
         services.AddSingleton<HttpClient>();
         services.AddSingleton<IApiService, ApiService>();

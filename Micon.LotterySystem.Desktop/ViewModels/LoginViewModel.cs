@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Configuration;
 using Micon.LotterySystem.Desktop.Services;
 
 namespace Micon.LotterySystem.Desktop.ViewModels;
@@ -28,10 +29,19 @@ public partial class LoginViewModel : ViewModelBase
 
     public event Action? LoginSucceeded;
 
-    public LoginViewModel(IApiService apiService, ITokenService tokenService)
+    public LoginViewModel(IApiService apiService, ITokenService tokenService, IConfiguration configuration)
     {
         _apiService = apiService;
         _tokenService = tokenService;
+
+        // 優先順位: 環境変数 > appsettings.json > デフォルト値
+        var backendUrl = configuration["BACKEND_URL"]
+            ?? configuration["Backend:Url"];
+
+        if (!string.IsNullOrEmpty(backendUrl))
+        {
+            _baseUrl = backendUrl.EndsWith("/") ? backendUrl : backendUrl + "/";
+        }
     }
 
     [RelayCommand]
