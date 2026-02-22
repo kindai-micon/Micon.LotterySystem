@@ -5,12 +5,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp;
+using System.Text.Json;
+using WebPush;
+using Microsoft.Extensions.Configuration;
 
 namespace Micon.LotterySystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,ApplicationDbContext applicationDbContext) : ControllerBase
+    public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,IConfiguration configuration, ApplicationDbContext applicationDbContext) : ControllerBase
     {
 
         [HttpGet(nameof(ExecutingSlotState))]
@@ -174,6 +178,35 @@ namespace Micon.LotterySystem.Controllers
             {
                 slot.Tickets.Add(ticket);
                 ticket.Status = TicketStatus.Winner;
+                var subscription = await applicationDbContext.PushSubscriptions.FirstOrDefaultAsync(s => s.DisplayId == ticket.DisplayId);
+                if (subscription != null)
+                {
+                    var webPushClient = new WebPushClient();
+                    var pushSubscription = new WebPush.PushSubscription(
+                        subscription.Endpoint,
+                        subscription.P256dh,
+                        subscription.Auth
+                    );
+                    var vapidSection = configuration.GetSection("Vapid");
+
+                    var vapidDetails = new VapidDetails(
+                        vapidSection["Subject"],
+                        vapidSection["PublicKey"],
+                        vapidSection["PrivateKey"]
+                    );
+
+                    string payload = JsonSerializer.Serialize(new { title = "通知", message = ticket.Number + "が当選しました" });
+
+                    try
+                    {
+                        webPushClient.SendNotification(pushSubscription, payload, vapidDetails);
+                    }
+                    catch (WebPushException ex)
+                    {
+                        Console.WriteLine($"Error: {ex.Message}");
+                    }
+                }
+
                 applicationDbContext.Update(ticket);
             }
             applicationDbContext.Update(slot);
