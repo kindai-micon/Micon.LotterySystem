@@ -21,6 +21,7 @@ namespace Micon.LotterySystem.Models
     public enum TicketStatus
     {
         Invalid,
+        PrintPublishing,
         Valid,
         Winner,
         Exchanged

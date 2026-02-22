@@ -62,7 +62,7 @@ namespace Micon.LotterySystem.Controllers
                 {
                     Number = startNumber + i,
                     LotteryGroupId = lotteryGroup.Id,
-                    Status = TicketStatus.Invalid
+                    Status = TicketStatus.PrintPublishing
                 });
             }
 
@@ -92,7 +92,8 @@ namespace Micon.LotterySystem.Controllers
                     displayId = t.DisplayId,
                     number = t.Number,
                     qrCodeUrl = $"/api/receipt/qrcode/{t.DisplayId}",
-                    status = t.Status.ToString()
+                    status = t.Status.ToString(),
+                    issuedAt = t.Created
                 }),
                 lotteryGroupName = lotteryGroup.Name
             };
@@ -114,7 +115,7 @@ namespace Micon.LotterySystem.Controllers
             if (ticket == null)
                 return NotFound(new { error = "チケットが見つかりません" });
 
-            if (ticket.Status != TicketStatus.Invalid)
+            if (ticket.Status != TicketStatus.PrintPublishing)
                 return Forbid();
 
             var baseUrl = GetBaseUrl();
@@ -143,6 +144,10 @@ namespace Micon.LotterySystem.Controllers
                 if (ticket.Status == TicketStatus.Valid)
                     return Ok(new { success = true, status = ticket.Status.ToString(), message = "すでに有効化されています" });
 
+                // PrintPublishing のみ有効化可能
+                if (ticket.Status != TicketStatus.PrintPublishing)
+                    return BadRequest(new { success = false, status = ticket.Status.ToString(), message = "この状態からは有効化できません" });
+
                 ticket.Status = TicketStatus.Valid;
                 ticket.Updated = DateTimeOffset.UtcNow;
                 await _db.SaveChangesAsync();
@@ -154,8 +159,8 @@ namespace Micon.LotterySystem.Controllers
                 if (ticket.Status == TicketStatus.Invalid)
                     return Ok(new { success = true, status = ticket.Status.ToString(), message = "すでに無効化されています" });
 
-                // Valid状態からのみ無効化可能（WinnerやExchangedは無効化できない）
-                if (ticket.Status != TicketStatus.Valid)
+                // PrintPublishing のみ無効化可能
+                if (ticket.Status != TicketStatus.PrintPublishing)
                     return BadRequest(new { success = false, status = ticket.Status.ToString(), message = "この状態からは無効化できません" });
 
                 ticket.Status = TicketStatus.Invalid;
