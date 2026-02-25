@@ -264,6 +264,10 @@ namespace Micon.LotterySystem.Controllers
         public async Task<IActionResult> LotterySlotState([FromQuery] string slotId)
         {
             var slot = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).Include(x=>x.Tickets).FirstOrDefaultAsync();
+            if (slot == null)
+            {
+                NotFound();
+            }
             var slotResult = new WinningModel()
             {
                 SlotId = slot.DisplayId.ToString(),
