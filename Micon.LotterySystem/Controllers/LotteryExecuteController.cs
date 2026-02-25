@@ -16,7 +16,7 @@ namespace Micon.LotterySystem.Controllers
         [HttpGet(nameof(ExecutingSlotState))]
         public async Task<IActionResult> ExecutingSlotState([FromQuery] string groupId)
         {
-            var groups = applicationDbContext.LotteryGroups.ToList();
+            //var groups = applicationDbContext.LotteryGroups.ToList();
             var group = await applicationDbContext.LotteryGroups.Where(x => x.DisplayId.ToString() == groupId).FirstOrDefaultAsync();
             if (group == null)
             {
@@ -51,15 +51,9 @@ namespace Micon.LotterySystem.Controllers
 
             var group = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).Include(x => x.LotteryGroup).Select(x => x.LotteryGroup).FirstOrDefaultAsync();
 
-
             if (group == null)
             {
                 return NotFound();
-            }
-
-            if(applicationDbContext.LotterySlots.Where(x=>x.LotteryGroupId==group.Id&& !(x.Status==SlotStatus.ViewResult || x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange || x.Status == SlotStatus.Exchange)).Any())
-            {
-                return Conflict();
             }
 
             var viewedList = applicationDbContext.LotterySlots.Where(x => x.Status == SlotStatus.ViewResult).ToList();
@@ -74,7 +68,17 @@ namespace Micon.LotterySystem.Controllers
             {
                 return NotFound();
             }
-            if (!(slot.Status == SlotStatus.StopExchange || slot.Status == SlotStatus.BeforeTheLottery))
+            if(!(slot.Status == SlotStatus.BeforeTheLottery || slot.Status == SlotStatus.StopExchange))
+            {
+                return Conflict();
+            }
+
+            var otherSlot = await applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id && x.DisplayId.ToString() != slotId).FirstOrDefaultAsync();
+            if (otherSlot == null)
+            {
+                return NotFound();
+            }
+            if (!(otherSlot.Status == SlotStatus.BeforeTheLottery || otherSlot.Status == SlotStatus.ViewResult || otherSlot.Status == SlotStatus.Exchange || otherSlot.Status == SlotStatus.StopExchange))
             {
                 return Conflict();
             }
