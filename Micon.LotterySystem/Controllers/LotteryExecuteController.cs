@@ -9,12 +9,13 @@ using SixLabors.ImageSharp;
 using System.Text.Json;
 using WebPush;
 using Microsoft.Extensions.Configuration;
+using Micon.LotterySystem.Services;
 
 namespace Micon.LotterySystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,IConfiguration configuration, ApplicationDbContext applicationDbContext) : ControllerBase
+    public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,IConfiguration configuration,IVapidService vapidService,IPushSubscriptionService pushSubscriptionService, ApplicationDbContext applicationDbContext) : ControllerBase
     {
 
         [HttpGet(nameof(ExecutingSlotState))]
@@ -174,38 +175,12 @@ namespace Micon.LotterySystem.Controllers
                 winner.Add(tickets[index]);
             }
             var winnerList = winner.OrderBy(x=>x.Id).ToList();
-            foreach(var ticket in winnerList)
+
+            foreach (var ticket in winnerList)
             {
                 slot.Tickets.Add(ticket);
                 ticket.Status = TicketStatus.Winner;
-                var subscription = await applicationDbContext.PushSubscriptions.FirstOrDefaultAsync(s => s.DisplayId == ticket.DisplayId);
-                if (subscription != null)
-                {
-                    var webPushClient = new WebPushClient();
-                    var pushSubscription = new WebPush.PushSubscription(
-                        subscription.Endpoint,
-                        subscription.P256dh,
-                        subscription.Auth
-                    );
-                    var vapidSection = configuration.GetSection("Vapid");
-
-                    var vapidDetails = new VapidDetails(
-                        vapidSection["Subject"],
-                        vapidSection["PublicKey"],
-                        vapidSection["PrivateKey"]
-                    );
-
-                    string payload = JsonSerializer.Serialize(new { title = "通知", message = ticket.Number + "が当選しました" });
-
-                    try
-                    {
-                        webPushClient.SendNotification(pushSubscription, payload, vapidDetails);
-                    }
-                    catch (WebPushException ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
-                }
+                _ = pushSubscriptionService.SendLotteryPushAsync(ticket);
 
                 applicationDbContext.Update(ticket);
             }
@@ -220,6 +195,7 @@ namespace Micon.LotterySystem.Controllers
         {
 
             var group = await applicationDbContext.LotterySlots
+
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x=>x.LotteryGroup)
                 .Select(x=>x.LotteryGroup)
