@@ -18,6 +18,7 @@
     <PackageReference Include="QuestPDF" Version="2025.4.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="WebPush" Version="1.0.12" />
     <PackageReference Include="ZXing.Net" Version="0.16.10" />
   </ItemGroup>
 

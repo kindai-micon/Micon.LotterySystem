@@ -5,12 +5,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp;
+using System.Text.Json;
+using WebPush;
+using Microsoft.Extensions.Configuration;
+using Micon.LotterySystem.Services;
 
 namespace Micon.LotterySystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,ApplicationDbContext applicationDbContext) : ControllerBase
+    public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,IConfiguration configuration,IVapidService vapidService,IPushSubscriptionService pushSubscriptionService, ApplicationDbContext applicationDbContext) : ControllerBase
     {
 
         [HttpGet(nameof(ExecutingSlotState))]
@@ -170,10 +175,13 @@ namespace Micon.LotterySystem.Controllers
                 winner.Add(tickets[index]);
             }
             var winnerList = winner.OrderBy(x=>x.Id).ToList();
-            foreach(var ticket in winnerList)
+
+            foreach (var ticket in winnerList)
             {
                 slot.Tickets.Add(ticket);
                 ticket.Status = TicketStatus.Winner;
+                _ = pushSubscriptionService.SendLotteryPushAsync(ticket);
+
                 applicationDbContext.Update(ticket);
             }
             applicationDbContext.Update(slot);
@@ -187,6 +195,7 @@ namespace Micon.LotterySystem.Controllers
         {
 
             var group = await applicationDbContext.LotterySlots
+
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x=>x.LotteryGroup)
                 .Select(x=>x.LotteryGroup)

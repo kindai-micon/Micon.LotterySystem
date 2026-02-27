@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 
 /Micon.LotterySystem/wwwroot/
+
+# VAPID keys (auto-generated)
+vapid_keys.json
