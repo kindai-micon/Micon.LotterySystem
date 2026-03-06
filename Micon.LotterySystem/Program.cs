@@ -15,6 +15,9 @@ using Micon.LotterySystem.Hubs;
 using Microsoft.AspNetCore.HttpOverrides;
 using QuestPDF.Infrastructure;
 using QuestPDF.Drawing;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 namespace Micon.LotterySystem
 {
     public class Program
@@ -40,9 +43,10 @@ namespace Micon.LotterySystem
             });
             builder.Services.AddScoped<IPasscodeService, PasscodeService>();
             builder.Services.AddScoped<ITicketPdfGenerator, TicketPdfGenerator>();
+            builder.Services.AddScoped<ITokenService, TokenService>();
+            builder.Services.AddScoped<ITicketIssuanceService, TicketIssuanceService>();
             builder.Services.AddSingleton<IVapidService, VapidService>();
             builder.Services.AddSingleton<IPushSubscriptionService, PushSubscriptionService>();
-
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
@@ -107,7 +111,25 @@ namespace Micon.LotterySystem
             {
                 option.DefaultScheme = IdentityConstants.ApplicationScheme;
                 option.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            }).AddIdentityCookies();
+            })
+            .AddIdentityCookies();
+
+            builder.Services.AddAuthentication()
+            .AddJwtBearer(options =>
+            {
+                var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured")))
+                };
+            });
 
             builder.Services.AddIdentityCore<ApplicationUser>(o =>
             {

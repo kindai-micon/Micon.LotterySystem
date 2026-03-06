@@ -31,6 +31,10 @@ namespace Micon.LotterySystem.Controllers
             if (ticket.Status == TicketStatus.Valid)
                 return Ok("すでに有効化されています");
 
+            // PrintPublishing状態はcompleteエンドポイントでのみ有効化可能
+            if (ticket.Status == TicketStatus.PrintPublishing)
+                return BadRequest("正しく発行されなかった抽選券です");
+
             ticket.Status = TicketStatus.Valid;
             ticket.Updated = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync();
@@ -49,6 +53,10 @@ namespace Micon.LotterySystem.Controllers
 
             if (ticket.Status == TicketStatus.Invalid)
                 return Ok("すでに無効化されています");
+
+            // PrintPublishing状態はcompleteエンドポイントでのみ無効化可能
+            if (ticket.Status == TicketStatus.PrintPublishing)
+                return BadRequest("このチケットは別の方法で無効化してください");
 
             ticket.Status = TicketStatus.Invalid;
             ticket.Updated = DateTimeOffset.UtcNow;

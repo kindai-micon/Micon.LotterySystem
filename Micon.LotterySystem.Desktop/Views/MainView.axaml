@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Micon.LotterySystem.Desktop.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="Micon.LotterySystem.Desktop.Views.MainView"
+             x:DataType="vm:MainViewModel">
+
+    <Design.DataContext>
+        <vm:MainViewModel/>
+    </Design.DataContext>
+
+    <DockPanel>
+        <!-- ヘッダー -->
+        <Border DockPanel.Dock="Top" Padding="10,8">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="抽選会選択" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Content="ログアウト" Command="{Binding LogoutCommand}"
+                        Padding="15,5"/>
+            </Grid>
+        </Border>
+
+        <Grid Margin="40">
+            <StackPanel Spacing="20" HorizontalAlignment="Center" VerticalAlignment="Center" Width="400">
+                <TextBlock Text="抽選会を選択してください" FontSize="16" Foreground="#666"
+                           HorizontalAlignment="Center" Margin="0,0,0,10"/>
+
+                <!-- ListBox for lottery groups -->
+                <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="5" MaxHeight="300">
+                    <ScrollViewer>
+                        <ListBox ItemsSource="{Binding LotteryGroups}"
+                                 SelectedItem="{Binding SelectedLotteryGroup}"
+                                 IsEnabled="{Binding !IsLoading}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" Padding="10,8"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- リフレッシュボタン -->
+                <Button Content="↻ 更新" Command="{Binding RefreshLotteryGroupsCommand}"
+                        IsEnabled="{Binding !IsLoading}"
+                        HorizontalAlignment="Center" Padding="20,8"/>
+
+                <Button Content="抽選券印刷へ"
+                        Command="{Binding NavigateToReceiptCommand}"
+                        IsEnabled="{Binding SelectedLotteryGroup, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        Width="200" Height="50" FontSize="16"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        HorizontalAlignment="Center" Margin="0,10,0,0"/>
+
+                <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="4" Margin="0,20,0,0"/>
+
+                <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"
+                           HorizontalAlignment="Center" Margin="0,10,0,0"/>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+
+</UserControl>
