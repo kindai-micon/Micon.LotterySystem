@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Micon.LotterySystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260221151227_AddRefreshToken")]
+    [Migration("20260306083457_AddRefreshToken")]
     partial class AddRefreshToken
     {
         /// <inheritdoc />
@@ -251,6 +251,41 @@ namespace Micon.LotterySystem.Migrations
                     b.HasIndex("LotteryGroupId");
 
                     b.ToTable("LotterySlots");
+                });
+
+            modelBuilder.Entity("Micon.LotterySystem.Models.PushSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DisplayId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long?>("ExpirationTime")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("Updated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PushSubscriptions");
                 });
 
             modelBuilder.Entity("Micon.LotterySystem.Models.RefreshToken", b =>
