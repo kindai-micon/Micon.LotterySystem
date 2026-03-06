@@ -40,6 +40,9 @@ namespace Micon.LotterySystem
             });
             builder.Services.AddScoped<IPasscodeService, PasscodeService>();
             builder.Services.AddScoped<ITicketPdfGenerator, TicketPdfGenerator>();
+            builder.Services.AddSingleton<IVapidService, VapidService>();
+            builder.Services.AddSingleton<IPushSubscriptionService, PushSubscriptionService>();
+
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
