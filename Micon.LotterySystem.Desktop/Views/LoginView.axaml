@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Micon.LotterySystem.Desktop.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="450"
+             x:Class="Micon.LotterySystem.Desktop.Views.LoginView"
+             x:DataType="vm:LoginViewModel">
+
+    <Design.DataContext>
+        <vm:LoginViewModel/>
+    </Design.DataContext>
+
+    <Grid Margin="40">
+        <StackPanel Spacing="15" VerticalAlignment="Center" MaxWidth="300">
+
+            <TextBlock Text="Micon Lottery System" FontSize="24" FontWeight="Bold"
+                       HorizontalAlignment="Center" Margin="0,0,0,20"/>
+
+            <TextBox Text="{Binding BaseUrl}" Watermark="サーバーURL" />
+
+            <TextBox Text="{Binding UserName}" Watermark="ユーザー名" />
+
+            <TextBox Text="{Binding Password}" PasswordChar="*" Watermark="パスワード" />
+
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="Red"
+                       TextWrapping="Wrap" MinHeight="20"/>
+
+            <Button Content="ログイン" Command="{Binding LoginCommand}"
+                    HorizontalAlignment="Stretch" Padding="10"
+                    IsEnabled="{Binding !IsLoading}"/>
+
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}"
+                         Height="4"/>
+
+        </StackPanel>
+    </Grid>
+
+</UserControl>

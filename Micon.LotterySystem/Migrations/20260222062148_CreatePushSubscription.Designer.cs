@@ -3,6 +3,7 @@ using System;
 using Micon.LotterySystem;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Micon.LotterySystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260222062148_CreatePushSubscription")]
+    partial class CreatePushSubscription
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -285,35 +288,6 @@ namespace Micon.LotterySystem.Migrations
                     b.ToTable("PushSubscriptions");
                 });
 
-            modelBuilder.Entity("Micon.LotterySystem.Models.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
-                });
-
             modelBuilder.Entity("Micon.LotterySystem.Models.Ticket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -519,17 +493,6 @@ namespace Micon.LotterySystem.Migrations
                     b.Navigation("LotteryGroup");
                 });
 
-            modelBuilder.Entity("Micon.LotterySystem.Models.RefreshToken", b =>
-                {
-                    b.HasOne("Micon.LotterySystem.Models.ApplicationUser", "User")
-                        .WithMany("RefreshTokens")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Micon.LotterySystem.Models.Ticket", b =>
                 {
                     b.HasOne("Micon.LotterySystem.Models.LotteryGroup", "LotteryGroup")
@@ -601,11 +564,6 @@ namespace Micon.LotterySystem.Migrations
             modelBuilder.Entity("Micon.LotterySystem.Models.ApplicationRole", b =>
                 {
                     b.Navigation("Authorities");
-                });
-
-            modelBuilder.Entity("Micon.LotterySystem.Models.ApplicationUser", b =>
-                {
-                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("Micon.LotterySystem.Models.LotteryGroup", b =>

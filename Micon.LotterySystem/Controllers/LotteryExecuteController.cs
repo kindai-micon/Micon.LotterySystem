@@ -5,18 +5,23 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp;
+using System.Text.Json;
+using WebPush;
+using Microsoft.Extensions.Configuration;
+using Micon.LotterySystem.Services;
 
 namespace Micon.LotterySystem.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,ApplicationDbContext applicationDbContext) : ControllerBase
+    public class LotteryExecuteController(IHubContext<LotteryHub> lotteryHubContext,IConfiguration configuration,IVapidService vapidService,IPushSubscriptionService pushSubscriptionService, ApplicationDbContext applicationDbContext) : ControllerBase
     {
 
         [HttpGet(nameof(ExecutingSlotState))]
         public async Task<IActionResult> ExecutingSlotState([FromQuery] string groupId)
         {
-            var groups = applicationDbContext.LotteryGroups.ToList();
+            //var groups = applicationDbContext.LotteryGroups.ToList();
             var group = await applicationDbContext.LotteryGroups.Where(x => x.DisplayId.ToString() == groupId).FirstOrDefaultAsync();
             if (group == null)
             {
@@ -51,15 +56,9 @@ namespace Micon.LotterySystem.Controllers
 
             var group = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).Include(x => x.LotteryGroup).Select(x => x.LotteryGroup).FirstOrDefaultAsync();
 
-
             if (group == null)
             {
                 return NotFound();
-            }
-
-            if(applicationDbContext.LotterySlots.Where(x=>x.LotteryGroupId==group.Id&& !(x.Status==SlotStatus.ViewResult || x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange || x.Status == SlotStatus.Exchange)).Any())
-            {
-                return Conflict();
             }
 
             var viewedList = applicationDbContext.LotterySlots.Where(x => x.Status == SlotStatus.ViewResult).ToList();
@@ -74,10 +73,18 @@ namespace Micon.LotterySystem.Controllers
             {
                 return NotFound();
             }
-            if (!(slot.Status == SlotStatus.StopExchange || slot.Status == SlotStatus.BeforeTheLottery))
+            if(!(slot.Status == SlotStatus.BeforeTheLottery || slot.Status == SlotStatus.StopExchange))
             {
                 return Conflict();
             }
+
+            if (await applicationDbContext.LotterySlots
+                .Where(x => x.LotteryGroupId == group.Id && x.DisplayId.ToString() != slotId)
+                .AnyAsync(x => !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.ViewResult || x.Status == SlotStatus.Exchange || x.Status == SlotStatus.StopExchange)))
+            {
+                return Conflict();
+            }
+
             slot.Status = SlotStatus.TargetLottery;
             applicationDbContext.Update(slot);
             await applicationDbContext.SaveChangesAsync();
@@ -99,10 +106,6 @@ namespace Micon.LotterySystem.Controllers
                 return NotFound();
             }
 
-            if (applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id && !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange || x.Status == SlotStatus.Exchange)).Count() != 1)
-            {
-                return Conflict();
-            }
             var slot = await applicationDbContext.LotterySlots.Where(x=>x.DisplayId.ToString() == slotId).FirstOrDefaultAsync();
             if (slot == null)
             {
@@ -113,6 +116,14 @@ namespace Micon.LotterySystem.Controllers
             {
                 return Conflict();
             }
+
+            if (await applicationDbContext.LotterySlots
+                .Where(x => x.LotteryGroupId == group.Id && x.DisplayId.ToString() != slotId)
+                .AnyAsync(x => !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.Exchange || x.Status == SlotStatus.StopExchange)))
+            {
+                return Conflict();
+            }
+
             slot.Status = SlotStatus.DuringAnimation;
             applicationDbContext.Update(slot);
             await applicationDbContext.SaveChangesAsync();
@@ -132,10 +143,6 @@ namespace Micon.LotterySystem.Controllers
             {
                 return NotFound();  
             }
-            if (applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id && !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange || x.Status == SlotStatus.Exchange)).Count() != 1)
-            {
-                return Conflict();
-            }
             var slot = await applicationDbContext.LotterySlots
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x=>x.Tickets)
@@ -148,7 +155,13 @@ namespace Micon.LotterySystem.Controllers
             {
                 return Conflict();
             }
-            slot.Status = SlotStatus.ViewResult;
+
+            if (await applicationDbContext.LotterySlots
+                .Where(x => x.LotteryGroupId == group.Id && x.DisplayId.ToString() != slotId)
+                .AnyAsync(x => !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.Exchange || x.Status == SlotStatus.StopExchange)))
+            {
+                return Conflict();
+            }
             var tickets = await applicationDbContext.Tickets
                 .Where(x => x.LotteryGroupId == group.Id && x.Status == TicketStatus.Valid)
                 .OrderBy(x => x.Id)
@@ -157,8 +170,9 @@ namespace Micon.LotterySystem.Controllers
             {
                 return NotFound();
             }
-
-            long count =slot.NumberOfFrames - slot.Tickets.Count;
+            slot.Status = SlotStatus.ViewResult;
+            long count = slot.NumberOfFrames - slot.Tickets.Count;
+            if (count < 0) count = 0;
             if(tickets.Count < count)
             {
                 count = tickets.Count;
@@ -170,10 +184,13 @@ namespace Micon.LotterySystem.Controllers
                 winner.Add(tickets[index]);
             }
             var winnerList = winner.OrderBy(x=>x.Id).ToList();
-            foreach(var ticket in winnerList)
+
+            foreach (var ticket in winnerList)
             {
                 slot.Tickets.Add(ticket);
                 ticket.Status = TicketStatus.Winner;
+                _ = pushSubscriptionService.SendLotteryPushAsync(ticket);
+
                 applicationDbContext.Update(ticket);
             }
             applicationDbContext.Update(slot);
@@ -187,6 +204,7 @@ namespace Micon.LotterySystem.Controllers
         {
 
             var group = await applicationDbContext.LotterySlots
+
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x=>x.LotteryGroup)
                 .Select(x=>x.LotteryGroup)
@@ -194,10 +212,6 @@ namespace Micon.LotterySystem.Controllers
             if (group == null)
             {
                 return NotFound();
-            }
-            if (applicationDbContext.LotterySlots.Where(x => x.LotteryGroupId == group.Id && !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.StopExchange || x.Status == SlotStatus.Exchange)).Count() != 1)
-            {
-                return Conflict();
             }
 
             var slot = await applicationDbContext.LotterySlots
@@ -209,6 +223,13 @@ namespace Micon.LotterySystem.Controllers
                 return NotFound();
             }
             if (slot.Status != SlotStatus.ViewResult)
+            {
+                return Conflict();
+            }
+
+            if (await applicationDbContext.LotterySlots
+                .Where(x => x.LotteryGroupId == group.Id && x.DisplayId.ToString() != slotId)
+                .AnyAsync(x => !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.Exchange || x.Status == SlotStatus.StopExchange)))
             {
                 return Conflict();
             }
@@ -239,7 +260,18 @@ namespace Micon.LotterySystem.Controllers
                 .Where(x => x.DisplayId.ToString() == slotId)
                 .Include(x => x.Tickets)
                 .FirstOrDefaultAsync();
+            if (slot == null)
+            {
+                return NotFound();
+            }
             if (slot.Status != SlotStatus.Exchange&& slot.Status != SlotStatus.ViewResult)
+            {
+                return Conflict();
+            }
+
+            if (await applicationDbContext.LotterySlots
+                .Where(x => x.LotteryGroupId == group.Id && x.DisplayId.ToString() != slotId)
+                .AnyAsync(x => !(x.Status == SlotStatus.BeforeTheLottery || x.Status == SlotStatus.ViewResult || x.Status == SlotStatus.Exchange || x.Status == SlotStatus.StopExchange)))
             {
                 return Conflict();
             }
@@ -264,6 +296,10 @@ namespace Micon.LotterySystem.Controllers
         public async Task<IActionResult> LotterySlotState([FromQuery] string slotId)
         {
             var slot = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).Include(x=>x.Tickets).FirstOrDefaultAsync();
+            if (slot == null)
+            {
+                return NotFound();
+            }
             var slotResult = new WinningModel()
             {
                 SlotId = slot.DisplayId.ToString(),

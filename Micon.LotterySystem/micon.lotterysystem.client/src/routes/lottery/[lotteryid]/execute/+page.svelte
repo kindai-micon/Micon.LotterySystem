@@ -399,7 +399,7 @@
     {/if}
 
     <div class="actions">
-        {#if [3,4].includes(getWinningModel(slot.slotId).status)}
+        {#if [3].includes(getWinningModel(slot.slotId).status)}
         <button class="fancy-button" onclick={async ()=>
             await onStopExchange(slot.slotId)}>
             引き換えを中止する

@@ -15,6 +15,9 @@ using Micon.LotterySystem.Hubs;
 using Microsoft.AspNetCore.HttpOverrides;
 using QuestPDF.Infrastructure;
 using QuestPDF.Drawing;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 namespace Micon.LotterySystem
 {
     public class Program
@@ -40,6 +43,10 @@ namespace Micon.LotterySystem
             });
             builder.Services.AddScoped<IPasscodeService, PasscodeService>();
             builder.Services.AddScoped<ITicketPdfGenerator, TicketPdfGenerator>();
+            builder.Services.AddScoped<ITokenService, TokenService>();
+            builder.Services.AddScoped<ITicketIssuanceService, TicketIssuanceService>();
+            builder.Services.AddSingleton<IVapidService, VapidService>();
+            builder.Services.AddSingleton<IPushSubscriptionService, PushSubscriptionService>();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSingleton<IAuthorityScanService, AuthorityScanService>();
@@ -50,17 +57,45 @@ namespace Micon.LotterySystem
             {
                 options.UseNpgsql(builder.Configuration.GetConnectionString("lottery-db"));
             });
+
+            // CORS設定: 開発環境は全許可、本番はappsettings.jsonから取得
             builder.Services.AddCors(options =>
             {
-                options.AddPolicy(
-                    "AllowAll",
-                    builder =>
+                options.AddPolicy("AllowAll", policy =>
+                {
+                    if (builder.Environment.IsDevelopment())
                     {
-                        builder.AllowAnyOrigin()   // ���ׂẴI���W������̃A�N�Z�X������
-                               .AllowAnyMethod()
-                               .AllowAnyHeader();
-                    });
+                        policy.SetIsOriginAllowed(_ => true)
+                              .AllowAnyMethod()
+                              .AllowAnyHeader()
+                              .AllowCredentials();
+                    }
+                    else
+                    {
+                        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+                        if (allowedOrigins.Length == 0)
+                        {
+                            // 本番環境で origins が未設定の場合は環境変数から取得
+                            var envOrigins = Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS");
+                            allowedOrigins = envOrigins?.Split(',', StringSplitOptions.RemoveEmptyEntries) ?? [];
+                        }
+
+                        if (allowedOrigins.Length > 0)
+                        {
+                            policy.WithOrigins(allowedOrigins)
+                                  .AllowAnyMethod()
+                                  .AllowAnyHeader()
+                                  .AllowCredentials();
+                        }
+                        else
+                        {
+                            // 設定がない場合は同じオリジンのみ許可
+                            policy.SetIsOriginAllowed(_ => false);
+                        }
+                    }
+                });
             });
+
             builder.Services.AddAuthorization(options =>
             {
                 AuthorityScanService authorityScanService = new AuthorityScanService();
@@ -69,14 +104,32 @@ namespace Micon.LotterySystem
                     options.AddPolicy(auth, policy =>
                     policy.Requirements.Add(new DynamicRoleRequirement(auth)));
                 }
-                
+
 
             });
             builder.Services.AddAuthentication(option =>
             {
                 option.DefaultScheme = IdentityConstants.ApplicationScheme;
                 option.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-            }).AddIdentityCookies();
+            })
+            .AddIdentityCookies();
+
+            builder.Services.AddAuthentication()
+            .AddJwtBearer(options =>
+            {
+                var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidAudience = jwtSettings["Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured")))
+                };
+            });
 
             builder.Services.AddIdentityCore<ApplicationUser>(o =>
             {
@@ -89,7 +142,7 @@ namespace Micon.LotterySystem
                 .AddSignInManager<SignInManager<ApplicationUser>>()
                 .AddErrorDescriber<JapaneseIdentityErrorDescriber>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
-            
+
             var app = builder.Build();
 
             app.UseForwardedHeaders(new ForwardedHeadersOptions
@@ -123,27 +176,27 @@ namespace Micon.LotterySystem
             app.MapHub<LotteryHub>("/api/lotteryHub");
             app.Use(async (context, next) =>
             {
-                // /api �Ŏn�܂郊�N�G�X�g�͂��̂܂܏����𑱍s
-                if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase)&& !context.Request.Path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase))
+                // /api で始まるリクエストはそのまま処理を継続
+                if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) && !context.Request.Path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase))
                 {
-                    // index.html �̓��e��ǂݍ���
+                    // index.html の内容を読み込む
                     var indexPath = Path.Combine(app.Environment.WebRootPath, "index.html");
                     if (File.Exists(indexPath))
                     {
                         context.Response.ContentType = "text/html";
                         await context.Response.SendFileAsync(indexPath);
-                        return; // index.html ��Ԃ����珈�����I��
+                        return; // index.html を返したら処理を終了
                     }
                 }
 
-                await next(); // /api �̏ꍇ�͎��̃~�h���E�F�A��
+                await next(); // /api の場合は次のミドルウェアへ
             });
             using (var sp = app.Services.CreateScope())
             {
                 var dbContext = sp.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 dbContext.Database.Migrate();
                 var authorityScanService = sp.ServiceProvider.GetRequiredService<IAuthorityScanService>();
-                
+
                 var role =  dbContext.Roles.Where(x => x.Name == "Admin")
                     .Include(x => x.Authorities).FirstOrDefault();
                 if(role != null)

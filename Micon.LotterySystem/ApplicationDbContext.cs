@@ -11,6 +11,8 @@ namespace Micon.LotterySystem
         public DbSet<Ticket> Tickets { get; set; }
         public DbSet<Authority> Authorities { get; set; }
         public DbSet<IssueLog> IssueLogs { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<PushSubscription> PushSubscriptions { get; set; }
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
