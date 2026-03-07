@@ -49,6 +49,9 @@
 
 	<Target Name="CopyPublish" AfterTargets="Publish">
 		<Message Text="## Copy Vite build output" Importance="high" />
-		<Exec Command="xcopy /f /s /e /y $(ProjectDir)wwwroot\* $(PublishDir)\wwwroot" />
+		<ItemGroup>
+			<FrontendFiles Include="$(ProjectDir)wwwroot\**\*.*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(FrontendFiles)" DestinationFolder="$(PublishDir)wwwroot\%(RecursiveDir)" />
 	</Target>
 </Project>
