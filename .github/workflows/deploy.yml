@@ -11,21 +11,33 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Micon.LotterySystem/micon.lotterysystem.client/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd Micon.LotterySystem/micon.lotterysystem.client
+          npm ci
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore Micon.LotterySystem/Micon.LotterySystem.csproj
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build Micon.LotterySystem/Micon.LotterySystem.csproj --configuration Release --no-restore
 
       - name: Publish
-        run: dotnet publish --configuration Release --no-build --output ./publish-output
+        run: dotnet publish Micon.LotterySystem/Micon.LotterySystem.csproj --configuration Release --no-build --output ./publish-output
 
       - name: Setup SSH key
         run: |
@@ -34,115 +46,42 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to server
+      - name: Deploy
         env:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           APPSETTINGS_JSON: ${{ secrets.APPSETTINGS_JSON }}
         run: |
-          ssh -i ~/.ssh/deploy_key ${DEPLOY_USER}@${DEPLOY_HOST} 'bash -s' << 'EOF'
+          DEPLOY_DIR="/var/www/miconlottery/publish"
 
-          # systemd サービスファイルのパスと Workingdirectory を確認
-          SERVICE_FILE="/etc/systemd/system/miconlottery.service"
-          CURRENT_DIR=$(grep "^WorkingDirectory=" $SERVICE_FILE | cut -d'=' -f2)
+          echo "Deploying to: $DEPLOY_DIR"
 
-          echo "Current WorkingDirectory: $CURRENT_DIR"
+          # サービスファイルをアップロード
+          scp -i ~/.ssh/deploy_key .deploy/miconlottery.service ${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/miconlottery.service
 
-          # 現在のディレクトリの末尾を確認
-          if [[ $CURRENT_DIR == */publish ]]; then
-            NEW_DIR="${CURRENT_DIR%/publish}/publish2"
-            OLD_DIR=$CURRENT_DIR
-          elif [[ $CURRENT_DIR == */publish2 ]]; then
-            NEW_DIR="${CURRENT_DIR%/publish2}/publish"
-            OLD_DIR=$CURRENT_DIR
-          else
-            echo "Error: WorkingDirectory does not end with 'publish' or 'publish2'"
-            exit 1
-          fi
-
-          echo "Creating new directory: $NEW_DIR"
-          mkdir -p $NEW_DIR
-
-          EOF
-        shell: bash
-
-      - name: Upload published files and update service
-        env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          APPSETTINGS_JSON: ${{ secrets.APPSETTINGS_JSON }}
-        run: |
-          # SSH キーを使用して rsync でファイルをアップロード
-          SERVICE_FILE="/etc/systemd/system/miconlottery.service"
-          CURRENT_DIR=$(ssh -i ~/.ssh/deploy_key ${DEPLOY_USER}@${DEPLOY_HOST} "grep '^WorkingDirectory=' $SERVICE_FILE | cut -d'=' -f2")
-
-          # 新しいディレクトリを決定
-          if [[ $CURRENT_DIR == */publish ]]; then
-            NEW_DIR="${CURRENT_DIR%/publish}/publish2"
-          else
-            NEW_DIR="${CURRENT_DIR%/publish2}/publish"
-          fi
-
-          echo "Uploading to: $NEW_DIR"
-
-          # 既存ファイルをバックアップ（オプション）
-          ssh -i ~/.ssh/deploy_key ${DEPLOY_USER}@${DEPLOY_HOST} << EOF
-            if [ -d "$NEW_DIR" ]; then
-              mv $NEW_DIR ${NEW_DIR}.backup.\$(date +%s)
-            fi
-            mkdir -p $NEW_DIR
-          EOF
-
-          # publish-output ディレクトリをアップロード
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key" \
+          # ファイルをアップロード（in-place上書き）
+          rsync -avz --delete -e "ssh -i ~/.ssh/deploy_key" \
             ./publish-output/ \
-            ${DEPLOY_USER}@${DEPLOY_HOST}:${NEW_DIR}/
-        shell: bash
+            ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_DIR}/
 
-      - name: Update appsettings.json and systemd service
-        env:
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          APPSETTINGS_JSON: ${{ secrets.APPSETTINGS_JSON }}
-        run: |
-          ssh -i ~/.ssh/deploy_key ${DEPLOY_USER}@${DEPLOY_HOST} 'bash -s' << 'EOF'
+          # appsettings.json を配置してサービス再起動
+          APPSETTINGS_B64=$(echo -n "${APPSETTINGS_JSON}" | base64 -w 0)
 
-          SERVICE_FILE="/etc/systemd/system/miconlottery.service"
-          CURRENT_DIR=$(grep "^WorkingDirectory=" $SERVICE_FILE | cut -d'=' -f2)
+          ssh -i ~/.ssh/deploy_key ${DEPLOY_USER}@${DEPLOY_HOST} "APPSETTINGS_B64=${APPSETTINGS_B64}" 'bash -s' << 'EOF'
 
-          # 新しいディレクトリと古いディレクトリを決定
-          if [[ $CURRENT_DIR == */publish ]]; then
-            NEW_DIR="${CURRENT_DIR%/publish}/publish2"
-            OLD_DIR=$CURRENT_DIR
-          else
-            NEW_DIR="${CURRENT_DIR%/publish2}/publish"
-            OLD_DIR=$CURRENT_DIR
-          fi
-
-          echo "Updating configuration for: $NEW_DIR"
-
-          # appsettings.json を置き換え
-          echo '${APPSETTINGS_JSON}' > $NEW_DIR/appsettings.json
-
-          # systemd サービスファイルを更新
-          sed -i "s|^WorkingDirectory=.*|WorkingDirectory=$NEW_DIR|" $SERVICE_FILE
-
-          # ExecStart を更新（アプリケーション名に合わせて変更してください）
-          sed -i "s|^ExecStart=.*|ExecStart=$NEW_DIR/Micon.LotterySystem|" $SERVICE_FILE
-
-          # systemd をリロードしてサービスを再起動
+          # サービスファイルを更新
+          mv /tmp/miconlottery.service /etc/systemd/system/miconlottery.service
           systemctl daemon-reload
+
+          DEPLOY_DIR="/var/www/miconlottery/publish"
+
+          # appsettings.json を配置（base64デコード）
+          echo "$APPSETTINGS_B64" | base64 -d > $DEPLOY_DIR/appsettings.json
+
+          # サービスを再起動
           systemctl restart miconlottery.service
 
           echo "Service restarted successfully"
-          echo "New WorkingDirectory: $NEW_DIR"
-
-          # サービス再起動後、古いディレクトリを削除
-          if [ -d "$OLD_DIR" ] && [ "$OLD_DIR" != "$NEW_DIR" ]; then
-            echo "Deleting old directory: $OLD_DIR"
-            rm -rf $OLD_DIR
-            echo "Old directory deleted successfully"
-          fi
 
           EOF
         shell: bash
