@@ -17,10 +17,10 @@ namespace Micon.LotterySystem.Services
     {
         return Document.Create(container =>
         {
-            // 1ページあたりのチケット数（2列 x 3行 = 6枚）
-            const int ticketsPerPage = 6;
+            // 1ページあたりのチケット数（2列 x 4行 = 8枚）
+            const int ticketsPerPage = 8;
             const int columns = 2;
-            const int rows = 3;
+            const int rows = 4;
 
             // チケットをページごとに分割
             for (int pageStart = 0; pageStart < tickets.Count; pageStart += ticketsPerPage)
