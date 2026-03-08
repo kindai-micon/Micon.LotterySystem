@@ -193,9 +193,13 @@ namespace Micon.LotterySystem.Controllers
 
                 baseUrl = $"{scheme}://{host}{portString}/ticket/";
             }
-            else if (!baseUrl.EndsWith("/"))
+            else
             {
-                baseUrl += "/";
+                if (!baseUrl.EndsWith("/"))
+                {
+                    baseUrl += "/";
+                }
+                baseUrl += "ticket/";
             }
 
             return baseUrl;
