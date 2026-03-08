@@ -251,6 +251,28 @@ flowchart LR
 
 ### サービス管理
 
+#### systemdサービス定義
+
+`.deploy/miconlottery.service`:
+
+```ini
+[Unit]
+Description=Micon Lottery System
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/miconlottery/publish
+ExecStart=/usr/bin/dotnet /var/www/miconlottery/publish/Micon.LotterySystem.dll
+Restart=always
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://*:5000
+
+[Install]
+WantedBy=multi-user.target
+```
+
+#### 管理コマンド
+
 ```bash
 # アプリケーションサービス
 sudo systemctl status miconlottery    # 状態確認
