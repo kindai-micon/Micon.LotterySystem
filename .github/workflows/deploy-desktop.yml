@@ -47,17 +47,18 @@ jobs:
         id: get_patch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
-          $prefix = "${{ steps.get_version.outputs.VERSION_PREFIX }}"
-          $tags = gh api repos/${{ github.repository }}/tags --paginate 100 2>$null | ConvertFrom-Json | Select-Object -ExpandProperty "name"
-          $latest = $tags | Where-Object { $_ -like "desktop-v$prefix.*" } | ForEach-Object { $_ -replace "desktop-v$prefix.", "" } | Sort-Object { [int]$_ } -Descending | Select-Object -First 1
-          if ($latest) {
-            $nextPatch = [int]$latest + 1
-          } else {
-            $nextPatch = 0
-          }
-          echo "PATCH=$nextPatch" >> $env:GITHUB_OUTPUT
-          echo "FULL_VERSION=$prefix.$nextPatch" >> $env:GITHUB_OUTPUT
+          prefix="${{ steps.get_version.outputs.VERSION_PREFIX }}"
+          tags=$(gh api repos/${{ github.repository }}/tags --paginate 100 2>/dev/null | jq -r '.[].name' 2>/dev/null || echo "")
+          latest=$(echo "$tags" | grep "^desktop-v$prefix\." | sed "s/desktop-v$prefix\.//" | sort -n | tail -1)
+          if [ -n "$latest" ]; then
+            nextPatch=$((latest + 1))
+          else
+            nextPatch=0
+          fi
+          echo "PATCH=$nextPatch" >> $GITHUB_OUTPUT
+          echo "FULL_VERSION=$prefix.$nextPatch" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
