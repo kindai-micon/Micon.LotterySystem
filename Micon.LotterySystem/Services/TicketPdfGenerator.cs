@@ -21,7 +21,7 @@ namespace Micon.LotterySystem.Services
             {
                 page.Size(PageSizes.A4);
                 page.Margin(20);
-                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Noto Sans JP Medium").Medium());
+                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Noto Sans JP").Medium());
 
                 page.Content().Table(table =>
                 {
@@ -61,14 +61,14 @@ namespace Micon.LotterySystem.Services
     private void RenderTicket(ColumnDescriptor ticketCol, TicketInfo ticket)
     {
         // タイトル
-        ticketCol.Item().AlignCenter().Text(ticket.Name).FontSize(16).FontFamily("Noto Sans JP Bold").Bold();
+        ticketCol.Item().AlignCenter().Text(ticket.Name).FontSize(16).FontFamily("Noto Sans JP").Bold();
 
         // 中段：QR + 番号
         ticketCol.Item().Row(row =>
         {
             row.Spacing(5);
             row.RelativeItem().AlignBottom().Text($"抽選番号：No.{ticket.TicketNumber}")
-                .FontFamily("Noto Sans JP Bold").FontSize(16).Bold();
+                .FontFamily("Noto Sans JP").FontSize(16).Bold();
 
             row.ConstantItem(100).AlignRight().Height(80)
                 .Image(GenerateQrCode(ticket.Url), ImageScaling.FitHeight);
