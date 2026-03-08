@@ -145,6 +145,7 @@ public partial class App : Application
         services.AddSingleton<HttpClient>();
         services.AddSingleton<IApiService, ApiService>();
         services.AddSingleton<ILocalStorageService, LocalStorageService>();
+        services.AddSingleton<IWinRawPrinter, WinRawPrinter>();
 
         // ViewModels
         services.AddTransient<LoginViewModel>();
