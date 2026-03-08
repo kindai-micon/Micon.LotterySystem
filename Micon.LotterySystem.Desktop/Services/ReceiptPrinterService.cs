@@ -26,6 +26,42 @@ public class ReceiptPrinterService : IReceiptPrinterService
         _logger = logger;
     }
 
+    public Task<PrintResult> ValidatePrinterAsync(string? printerName = null, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var resolvedPrinterName = string.IsNullOrWhiteSpace(printerName)
+            ? _printerSettings.PrinterName?.Trim()
+            : printerName.Trim();
+
+        if (string.IsNullOrWhiteSpace(resolvedPrinterName))
+        {
+            return Task.FromResult(PrintResult.Fail(
+                PrintStage.SendToPrinter,
+                "プリンタ名が設定されていません。",
+                isPrinted: false,
+                canRetry: false));
+        }
+
+        if (!_winRawPrinter.CanOpen(resolvedPrinterName, out var errorMessage))
+        {
+            _logger.LogWarning(
+                "Printer preflight check failed. Printer={PrinterName}, Error={ErrorMessage}",
+                resolvedPrinterName,
+                errorMessage);
+
+            return Task.FromResult(PrintResult.Fail(
+                PrintStage.SendToPrinter,
+                errorMessage ?? $"プリンタ '{resolvedPrinterName}' を利用できません。",
+                isPrinted: false,
+                canRetry: true));
+        }
+
+        _logger.LogInformation("Printer preflight check succeeded. Printer={PrinterName}", resolvedPrinterName);
+
+        return Task.FromResult(PrintResult.Success("プリンタ接続を確認しました。", isPrinted: false));
+    }
+
     public Task<PrintResult> PrintAsync(ReceiptPrintJob printJob, CancellationToken cancellationToken = default)
     {
         try

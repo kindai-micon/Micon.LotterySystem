@@ -6,5 +6,7 @@ namespace Micon.LotterySystem.Desktop.Services;
 
 public interface IReceiptPrinterService
 {
+    Task<PrintResult> ValidatePrinterAsync(string? printerName = null, CancellationToken cancellationToken = default);
+
     Task<PrintResult> PrintAsync(ReceiptPrintJob printJob, CancellationToken cancellationToken = default);
 }

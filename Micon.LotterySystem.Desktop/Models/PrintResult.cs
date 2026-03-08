@@ -21,14 +21,14 @@ public class PrintResult
 
     public bool CanRetry { get; init; }
 
-    public static PrintResult Success(string message = "印刷に成功しました")
+    public static PrintResult Success(string message = "印刷に成功しました", bool isPrinted = true)
     {
         return new PrintResult
         {
             IsSuccess = true,
             Stage = PrintStage.None,
             Message = message,
-            IsPrinted = true,
+            IsPrinted = isPrinted,
             CanRetry = false
         };
     }

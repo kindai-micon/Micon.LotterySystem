@@ -113,12 +113,25 @@ public partial class ReceiptViewModel : ViewModelBase
 
         IsLoading = true;
         PrintProgress = 0;
-        PrintTotal = TicketCount;
+        PrintTotal = 0;
 
         var failedTickets = new List<FailedTicketInfo>();
+        var successCount = 0;
+        var qrFailedCount = 0;
+        var printFailedCount = 0;
+        var completeFailedCount = 0;
 
         try
         {
+            StatusMessage = "プリンタ接続を確認中...";
+            var printerCheckResult = await _receiptPrinterService.ValidatePrinterAsync(_printerSettings.PrinterName);
+
+            if (!printerCheckResult.IsSuccess)
+            {
+                StatusMessage = $"印刷前チェックに失敗しました: {printerCheckResult.Message}";
+                return;
+            }
+
             StatusMessage = "チケット情報を取得中...";
             var result = await _apiService.IssueTicketsAsync(TicketCount, LotteryGroup.DisplayId);
 
@@ -128,9 +141,17 @@ public partial class ReceiptViewModel : ViewModelBase
                 return;
             }
 
+            if (result.Tickets.Count == 0)
+            {
+                StatusMessage = "発行対象のチケットがありませんでした";
+                return;
+            }
+
             var lotteryGroupName = string.IsNullOrWhiteSpace(result.LotteryGroupName)
                 ? LotteryGroup.Name
                 : result.LotteryGroupName;
+
+            PrintTotal = result.Tickets.Count;
 
             foreach (var ticket in result.Tickets)
             {
@@ -144,16 +165,19 @@ public partial class ReceiptViewModel : ViewModelBase
                     LotteryGroupDisplayId = LotteryGroup.DisplayId
                 };
 
+                PrintProgress++;
+
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    PrintProgress++;
-                    StatusMessage = $"QRコード取得中... ({PrintProgress}/{PrintTotal})";
+                    StatusMessage = $"QRコード取得中... ({PrintProgress}/{PrintTotal}) No.{ticket.Number}";
                 });
 
                 var qrCodeImage = await _apiService.GetQrCodeAsync(ticket.DisplayId);
 
                 if (qrCodeImage == null)
                 {
+                    qrFailedCount++;
+
                     failedTickets.Add(new FailedTicketInfo
                     {
                         Number = ticket.Number,
@@ -167,7 +191,7 @@ public partial class ReceiptViewModel : ViewModelBase
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    StatusMessage = $"印刷中... ({PrintProgress}/{PrintTotal})";
+                    StatusMessage = $"印刷中... ({PrintProgress}/{PrintTotal}) No.{ticket.Number}";
                 });
 
                 var printJob = new ReceiptPrintJob
@@ -187,11 +211,13 @@ public partial class ReceiptViewModel : ViewModelBase
 
                 if (!printResult.IsSuccess)
                 {
+                    printFailedCount++;
+
                     failedTickets.Add(new FailedTicketInfo
                     {
                         Number = ticket.Number,
                         DisplayId = ticket.DisplayId,
-                        Reason = printResult.Message
+                        Reason = BuildPrintFailureReason(printResult)
                     });
 
                     await AddRecordAsync(record);
@@ -200,20 +226,23 @@ public partial class ReceiptViewModel : ViewModelBase
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    StatusMessage = $"状態更新中... ({PrintProgress}/{PrintTotal})";
+                    StatusMessage = $"状態更新中... ({PrintProgress}/{PrintTotal}) No.{ticket.Number}";
                 });
 
                 var completeResult = await _apiService.CompleteTicketAsync(ticket.DisplayId, ActivateOnIssue);
 
                 if (completeResult.Success)
                 {
+                    successCount++;
                     record.Status = ActivateOnIssue ? "Valid" : "Invalid";
                 }
                 else
                 {
+                    completeFailedCount++;
+
                     var reason = completeResult.Error
                         ?? completeResult.Message
-                        ?? "印刷後の状態更新に失敗しました";
+                        ?? "状態更新時に不明なエラーが発生しました";
 
                     failedTickets.Add(new FailedTicketInfo
                     {
@@ -226,14 +255,12 @@ public partial class ReceiptViewModel : ViewModelBase
                 await AddRecordAsync(record);
             }
 
-            if (failedTickets.Count > 0)
-            {
-                StatusMessage = $"{result.Tickets.Count}枚中{failedTickets.Count}枚の処理に失敗しました";
-            }
-            else
-            {
-                StatusMessage = $"{result.Tickets.Count}枚のチケットを印刷しました";
-            }
+            StatusMessage = BuildSummaryMessage(
+                result.Tickets.Count,
+                successCount,
+                qrFailedCount,
+                printFailedCount,
+                completeFailedCount);
         }
         catch (Exception ex)
         {
@@ -254,6 +281,47 @@ public partial class ReceiptViewModel : ViewModelBase
     {
         await Dispatcher.UIThread.InvokeAsync(() => IssuedTickets.Insert(0, record));
         _localStorage.AddRecords(LotteryGroup.DisplayId, LotteryGroup.Name, new[] { record });
+    }
+
+    private static string BuildPrintFailureReason(PrintResult printResult)
+    {
+        var prefix = printResult.Stage switch
+        {
+            PrintStage.QrFetch => "QRコード取得に失敗しました",
+            PrintStage.Render => "券面生成に失敗しました",
+            PrintStage.SendToPrinter => "プリンタ送信に失敗しました",
+            PrintStage.Complete => "状態更新に失敗しました",
+            _ => "印刷処理に失敗しました"
+        };
+
+        return string.IsNullOrWhiteSpace(printResult.Message)
+            ? prefix
+            : $"{prefix}: {printResult.Message}";
+    }
+
+    private static string BuildSummaryMessage(
+        int totalCount,
+        int successCount,
+        int qrFailedCount,
+        int printFailedCount,
+        int completeFailedCount)
+    {
+        if (totalCount <= 0)
+        {
+            return "発行対象のチケットがありませんでした";
+        }
+
+        if (qrFailedCount == 0 && printFailedCount == 0 && completeFailedCount == 0)
+        {
+            return $"{totalCount}枚のチケットを印刷しました";
+        }
+
+        return
+            $"{totalCount}枚中 " +
+            $"成功{successCount}枚 / " +
+            $"QR取得失敗{qrFailedCount}枚 / " +
+            $"印刷失敗{printFailedCount}枚 / " +
+            $"状態更新失敗{completeFailedCount}枚";
     }
 
     [RelayCommand]
