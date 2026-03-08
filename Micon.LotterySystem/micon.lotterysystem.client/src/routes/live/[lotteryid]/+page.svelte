@@ -78,7 +78,7 @@
                 if (!slot.slotId) return slot;
 
                 try {
-                    const res = await fetch(`/api/LotteryExecute/${slot.slotId}`);
+                    const res = await fetch(`/api/LotteryExecute/LotterySlotState?slotId=${slot.slotId}`);
                     if (!res.ok) throw new Error('Failed to fetch winning data');
 
                     const winning: WinningModel = await res.json();
