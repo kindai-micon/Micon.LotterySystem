@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Micon.LotterySystem.Desktop.Models;
 using Micon.LotterySystem.Desktop.Services;
+using Micon.LotterySystem.Desktop.Settings;
 
 namespace Micon.LotterySystem.Desktop.ViewModels;
 
@@ -22,6 +22,9 @@ public partial class ReceiptViewModel : ViewModelBase
 {
     private readonly IApiService _apiService;
     private readonly ILocalStorageService _localStorage;
+    private readonly IReceiptPrinterService _receiptPrinterService;
+    private readonly PrinterSettings _printerSettings;
+    private readonly ReceiptLayoutSettings _receiptLayoutSettings;
 
     [ObservableProperty]
     private int _ticketCount = 1;
@@ -55,13 +58,21 @@ public partial class ReceiptViewModel : ViewModelBase
     public event Action? BackRequested;
     public event Action<List<FailedTicketInfo>>? ShowFailedTicketsDialog;
 
-    public ReceiptViewModel(IApiService apiService, ILocalStorageService localStorage, LotteryGroupInfo lotteryGroup)
+    public ReceiptViewModel(
+        IApiService apiService,
+        ILocalStorageService localStorage,
+        IReceiptPrinterService receiptPrinterService,
+        PrinterSettings printerSettings,
+        ReceiptLayoutSettings receiptLayoutSettings,
+        LotteryGroupInfo lotteryGroup)
     {
         _apiService = apiService;
         _localStorage = localStorage;
+        _receiptPrinterService = receiptPrinterService;
+        _printerSettings = printerSettings;
+        _receiptLayoutSettings = receiptLayoutSettings;
         _lotteryGroup = lotteryGroup;
 
-        // ローカルから履歴を読み込む
         LoadLocalRecords();
     }
 
@@ -104,12 +115,10 @@ public partial class ReceiptViewModel : ViewModelBase
         PrintProgress = 0;
         PrintTotal = TicketCount;
 
-        var newRecords = new List<IssuedTicketRecord>();
         var failedTickets = new List<FailedTicketInfo>();
 
         try
         {
-            // 1. JSONでチケット情報を取得
             StatusMessage = "チケット情報を取得中...";
             var result = await _apiService.IssueTicketsAsync(TicketCount, LotteryGroup.DisplayId);
 
@@ -119,22 +128,22 @@ public partial class ReceiptViewModel : ViewModelBase
                 return;
             }
 
-            // 2. 各チケットを処理
+            var lotteryGroupName = string.IsNullOrWhiteSpace(result.LotteryGroupName)
+                ? LotteryGroup.Name
+                : result.LotteryGroupName;
+
             foreach (var ticket in result.Tickets)
             {
-                // ローカル記録を作成（初期状態はPrintPublishing）
                 var record = new IssuedTicketRecord
                 {
                     DisplayId = ticket.DisplayId,
                     Number = ticket.Number,
                     Status = "PrintPublishing",
-                    IssuedAt = DateTime.Now,
-                    LotteryGroupName = LotteryGroup.Name,
+                    IssuedAt = ticket.IssuedAt.LocalDateTime,
+                    LotteryGroupName = lotteryGroupName,
                     LotteryGroupDisplayId = LotteryGroup.DisplayId
                 };
-                newRecords.Add(record);
 
-                // 2-1. QRコード画像を取得
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     PrintProgress++;
@@ -145,7 +154,6 @@ public partial class ReceiptViewModel : ViewModelBase
 
                 if (qrCodeImage == null)
                 {
-                    // QRコード取得失敗を記録
                     failedTickets.Add(new FailedTicketInfo
                     {
                         Number = ticket.Number,
@@ -153,48 +161,71 @@ public partial class ReceiptViewModel : ViewModelBase
                         Reason = "QRコードの取得に失敗しました"
                     });
 
-                    // ローカルには保存（PrintPublishingのまま）
-                    await Dispatcher.UIThread.InvokeAsync(() => IssuedTickets.Insert(0, record));
-                    _localStorage.AddRecords(LotteryGroup.DisplayId, LotteryGroup.Name, new[] { record });
+                    await AddRecordAsync(record);
                     continue;
                 }
 
-                // 2-2. 印刷処理（未実装）
-                // TODO: レシートプリンタへの印刷処理を実装
-                // PrintReceipt(ticket, qrCodeImage);
-
-                // 2-3. Complete送信
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    StatusMessage = $"完了処理中... ({PrintProgress}/{PrintTotal})";
+                    StatusMessage = $"印刷中... ({PrintProgress}/{PrintTotal})";
+                });
+
+                var printJob = new ReceiptPrintJob
+                {
+                    LotteryGroupName = lotteryGroupName,
+                    TicketNumber = ticket.Number,
+                    TicketDisplayId = ticket.DisplayId,
+                    IssuedAt = ticket.IssuedAt,
+                    QrCodePngBytes = qrCodeImage,
+                    ActivateOnIssue = ActivateOnIssue,
+                    PrinterName = _printerSettings.PrinterName,
+                    WarningLines = _receiptLayoutSettings.WarningLines,
+                    FooterText = _receiptLayoutSettings.FooterText
+                };
+
+                var printResult = await _receiptPrinterService.PrintAsync(printJob);
+
+                if (!printResult.IsSuccess)
+                {
+                    failedTickets.Add(new FailedTicketInfo
+                    {
+                        Number = ticket.Number,
+                        DisplayId = ticket.DisplayId,
+                        Reason = printResult.Message
+                    });
+
+                    await AddRecordAsync(record);
+                    continue;
+                }
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    StatusMessage = $"状態更新中... ({PrintProgress}/{PrintTotal})";
                 });
 
                 var completeResult = await _apiService.CompleteTicketAsync(ticket.DisplayId, ActivateOnIssue);
 
-                // Complete結果に応じて状態を更新
                 if (completeResult.Success)
                 {
                     record.Status = ActivateOnIssue ? "Valid" : "Invalid";
                 }
                 else
                 {
-                    // Complete失敗を記録
+                    var reason = completeResult.Error
+                        ?? completeResult.Message
+                        ?? "印刷後の状態更新に失敗しました";
+
                     failedTickets.Add(new FailedTicketInfo
                     {
                         Number = ticket.Number,
                         DisplayId = ticket.DisplayId,
-                        Reason = completeResult.Error ?? "完了処理に失敗しました"
+                        Reason = $"印刷後の状態更新に失敗しました: {reason}"
                     });
                 }
 
-                // UIに追加
-                await Dispatcher.UIThread.InvokeAsync(() => IssuedTickets.Insert(0, record));
-
-                // ローカルに保存
-                _localStorage.AddRecords(LotteryGroup.DisplayId, LotteryGroup.Name, new[] { record });
+                await AddRecordAsync(record);
             }
 
-            // 完了メッセージ
             if (failedTickets.Count > 0)
             {
                 StatusMessage = $"{result.Tickets.Count}枚中{failedTickets.Count}枚の処理に失敗しました";
@@ -212,12 +243,17 @@ public partial class ReceiptViewModel : ViewModelBase
         {
             IsLoading = false;
 
-            // 失敗したチケットがあればダイアログ表示
             if (failedTickets.Count > 0)
             {
                 ShowFailedTicketsDialog?.Invoke(failedTickets);
             }
         }
+    }
+
+    private async Task AddRecordAsync(IssuedTicketRecord record)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => IssuedTickets.Insert(0, record));
+        _localStorage.AddRecords(LotteryGroup.DisplayId, LotteryGroup.Name, new[] { record });
     }
 
     [RelayCommand]
@@ -228,7 +264,6 @@ public partial class ReceiptViewModel : ViewModelBase
         PrintProgress = 0;
         PrintTotal = 0;
 
-        // 履歴をクリア
         _localStorage.ClearRecords(LotteryGroup.DisplayId);
         IssuedTickets.Clear();
     }

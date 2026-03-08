@@ -163,6 +163,9 @@ public partial class App : Application
             sp.GetRequiredService<IApiService>(),
             sp.GetRequiredService<ILocalStorageService>(),
             sp.GetRequiredService<ITokenService>(),
+            sp.GetRequiredService<IReceiptPrinterService>(),
+            sp.GetRequiredService<PrinterSettings>(),
+            sp.GetRequiredService<ReceiptLayoutSettings>(),
             () => sp.GetRequiredService<LoginViewModel>(),
             () => sp.GetRequiredService<MainViewModel>()
         ));
