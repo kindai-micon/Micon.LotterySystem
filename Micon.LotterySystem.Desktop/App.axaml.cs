@@ -152,6 +152,7 @@ public partial class App : Application
         services.AddSingleton<ILocalStorageService, LocalStorageService>();
         services.AddSingleton<IWinRawPrinter, WinRawPrinter>();
         services.AddSingleton<ITicketRenderService, TicketRenderService>();
+        services.AddSingleton<IReceiptPrinterService, ReceiptPrinterService>();
 
         // ViewModels
         services.AddTransient<LoginViewModel>();
