@@ -30,7 +30,7 @@
         let i1 = 0;
 
         allTickets.forEach((t, index) => {
-            if (t.status === 3) {
+            if (t.status === 4) {  // Exchanged (引き換え済み)
                 const digits = t.number.toString().padStart(digitCount, '0').split('');
                 exchangedNumbers[i1] = digits;
                 i1++;
@@ -40,14 +40,14 @@
         displayedNumbers = Array.from({ length: frameCount - exchangedNumbers.length }, () =>
             Array(digitCount).fill("-")
         );
-        // 確定済み番号 (status === 2)
+        // 確定済み番号 (status === 3: Winner)
         resultNumbers = allTickets
-            .filter(t => t.status === 2)
+            .filter(t => t.status === 3)  // Winner (当選)
             .map(t => t.number.toString().padStart(digitCount, '0'));
         i1 = 0;
         // 確定している枠にだけ番号を表示
         allTickets.forEach((t, index) => {
-            if (t.status === 2) {
+            if (t.status === 3) {  // Winner (当選)
                 const digits = t.number.toString().padStart(digitCount, '0').split('');
                 displayedNumbers[i1] = digits;
                 i1++;
