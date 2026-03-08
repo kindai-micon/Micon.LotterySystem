@@ -86,14 +86,7 @@ namespace Micon.LotterySystem.Controllers
             }
             if (ticket.Status != TicketStatus.Winner)
             {
-                if (ticket.Status == TicketStatus.Exchanged)
-                {
-                    return Conflict("交換済み");
-                }
-                else
-                {
-                    return Conflict("当選者ではありません");
-                }
+                return Conflict("当選者ではありません");
             }
             ticket.Status = TicketStatus.Exchanged;
             ticket.Updated = DateTimeOffset.UtcNow;

@@ -261,11 +261,11 @@
     function getTicketStatusClass(status: number): string {
         switch (status) {
             case 2:
-                return 'status-green';  // 当選後
+                return 'status-green';  // Valid (有効、抽選前)
             case 3:
-                return 'status-blue';   // 表示中止など
+                return 'status-blue';   // Winner (当選、引き換え前)
             case 4:
-                return 'status-gray';   // 引換後
+                return 'status-gray';   // Exchanged (引き換え済み)
             default:
                 return '';
         }
@@ -385,7 +385,7 @@
     <p>締切: {slot.deadLine ?? "未設定"}</p>
 
     {#if slot.slotId && getWinningModel(slot.slotId)}
-    {#if getWinningModel(slot.slotId).tickets.length > 0}
+    {#if getWinningModel(slot.slotId).tickets.length > 0 && getWinningModel(slot.slotId).status >= 3}
     <div>
         <h4>チケット一覧</h4>
         <div class="tickets-container">
