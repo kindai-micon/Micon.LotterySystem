@@ -14,6 +14,8 @@ using Microsoft.Extensions.Logging;
 using Micon.LotterySystem.Desktop.Services;
 using Micon.LotterySystem.Desktop.ViewModels;
 using Micon.LotterySystem.Desktop.Views;
+using System.Globalization;
+using Micon.LotterySystem.Desktop.Settings;
 
 namespace Micon.LotterySystem.Desktop;
 
@@ -141,11 +143,15 @@ public partial class App : Application
         });
 
         services.AddSingleton(_configuration!);
+        services.AddSingleton(BuildPrinterSettings(_configuration!));
+        services.AddSingleton(BuildReceiptLayoutSettings(_configuration!));
+
         services.AddSingleton<ITokenService, TokenService>();
         services.AddSingleton<HttpClient>();
         services.AddSingleton<IApiService, ApiService>();
         services.AddSingleton<ILocalStorageService, LocalStorageService>();
         services.AddSingleton<IWinRawPrinter, WinRawPrinter>();
+        services.AddSingleton<ITicketRenderService, TicketRenderService>();
 
         // ViewModels
         services.AddTransient<LoginViewModel>();
@@ -167,5 +173,74 @@ public partial class App : Application
             failedTickets.Select(t => (t.Number, t.Reason)).ToList()
         );
         dialog.ShowDialog(parent);
+    }
+
+    private static PrinterSettings BuildPrinterSettings(IConfiguration configuration)
+    {
+        var section = configuration.GetSection("Printer");
+
+        return new PrinterSettings
+        {
+            PrinterName = section["PrinterName"] ?? "POS-80C",
+            DocumentName = section["DocumentName"] ?? "抽選券印刷",
+            CutEnabled = ParseBool(section["CutEnabled"], true)
+        };
+    }
+
+    private static ReceiptLayoutSettings BuildReceiptLayoutSettings(IConfiguration configuration)
+    {
+        var section = configuration.GetSection("ReceiptLayout");
+        var warningSection = section.GetSection("WarningLines");
+
+        var warningLines = warningSection
+            .GetChildren()
+            .Select(x => x.Value)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Cast<string>()
+            .ToList();
+
+        return new ReceiptLayoutSettings
+        {
+            PaperWidthPx = ParseInt(section["PaperWidthPx"], 576),
+            QrSizePx = ParseInt(section["QrSizePx"], 220),
+            MarginLeft = ParseInt(section["MarginLeft"], 24),
+            MarginRight = ParseInt(section["MarginRight"], 24),
+            MarginTop = ParseInt(section["MarginTop"], 24),
+            MarginBottom = ParseInt(section["MarginBottom"], 24),
+            TitleFontSize = ParseFloat(section["TitleFontSize"], 28),
+            NumberFontSize = ParseFloat(section["NumberFontSize"], 42),
+            BodyFontSize = ParseFloat(section["BodyFontSize"], 22),
+            FooterFontSize = ParseFloat(section["FooterFontSize"], 18),
+            Threshold = ParseInt(section["Threshold"], 160),
+            WarningLines = warningLines.Count > 0
+                ? warningLines
+                : new List<string>
+                {
+                "本券は大切に保管してください",
+                "抽選時までお持ちください"
+                },
+            FooterText = section["FooterText"] ?? "Micon Lottery System"
+        };
+    }
+
+    private static int ParseInt(string? value, int defaultValue)
+    {
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : defaultValue;
+    }
+
+    private static float ParseFloat(string? value, float defaultValue)
+    {
+        return float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : defaultValue;
+    }
+
+    private static bool ParseBool(string? value, bool defaultValue)
+    {
+        return bool.TryParse(value, out var parsed)
+            ? parsed
+            : defaultValue;
     }
 }
