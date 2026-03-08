@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Micon.LotterySystem.Desktop.Models;
+using Micon.LotterySystem.Desktop.Settings;
 using Micon.LotterySystem.Desktop.ViewModels;
 
 namespace Micon.LotterySystem.Desktop.Services;
@@ -13,6 +14,9 @@ public class NavigationService : INavigationService, INotifyPropertyChanged
     private readonly IApiService _apiService;
     private readonly ILocalStorageService _localStorage;
     private readonly ITokenService _tokenService;
+    private readonly IReceiptPrinterService _receiptPrinterService;
+    private readonly PrinterSettings _printerSettings;
+    private readonly ReceiptLayoutSettings _receiptLayoutSettings;
     private readonly Func<LoginViewModel> _loginViewModelFactory;
     private readonly Func<MainViewModel> _mainViewModelFactory;
 
@@ -44,19 +48,24 @@ public class NavigationService : INavigationService, INotifyPropertyChanged
         IApiService apiService,
         ILocalStorageService localStorage,
         ITokenService tokenService,
+        IReceiptPrinterService receiptPrinterService,
+        PrinterSettings printerSettings,
+        ReceiptLayoutSettings receiptLayoutSettings,
         Func<LoginViewModel> loginViewModelFactory,
         Func<MainViewModel> mainViewModelFactory)
     {
         _apiService = apiService;
         _localStorage = localStorage;
         _tokenService = tokenService;
+        _receiptPrinterService = receiptPrinterService;
+        _printerSettings = printerSettings;
+        _receiptLayoutSettings = receiptLayoutSettings;
         _loginViewModelFactory = loginViewModelFactory;
         _mainViewModelFactory = mainViewModelFactory;
     }
 
     public void NavigateToLogin()
     {
-        // 古いLoginViewModelの購読を解除
         if (_currentLoginViewModel != null)
         {
             _currentLoginViewModel.LoginSucceeded -= OnLoginSucceeded;
@@ -80,14 +89,20 @@ public class NavigationService : INavigationService, INotifyPropertyChanged
 
     public void NavigateToReceipt(LotteryGroupInfo lotteryGroup)
     {
-        // 古いReceiptViewModelの購読を解除
         if (_currentReceiptViewModel != null)
         {
             _currentReceiptViewModel.BackRequested -= OnBackRequested;
             _currentReceiptViewModel.ShowFailedTicketsDialog -= OnShowFailedTicketsDialog;
         }
 
-        _currentReceiptViewModel = new ReceiptViewModel(_apiService, _localStorage, lotteryGroup);
+        _currentReceiptViewModel = new ReceiptViewModel(
+            _apiService,
+            _localStorage,
+            _receiptPrinterService,
+            _printerSettings,
+            _receiptLayoutSettings,
+            lotteryGroup);
+
         _currentReceiptViewModel.BackRequested += OnBackRequested;
         _currentReceiptViewModel.ShowFailedTicketsDialog += OnShowFailedTicketsDialog;
         CurrentViewModel = _currentReceiptViewModel;

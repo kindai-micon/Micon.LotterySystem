@@ -61,13 +61,15 @@ namespace Micon.LotterySystem.Controllers
                 return NotFound();
             }
 
-            var viewedList = applicationDbContext.LotterySlots.Where(x => x.Status == SlotStatus.ViewResult).ToList();
+            var viewedList = applicationDbContext.LotterySlots
+                .Where(x => x.LotteryGroupId == group.Id && x.Status == SlotStatus.ViewResult)
+                .ToList();
             foreach(var viewResult in viewedList)
             {
                 viewResult.Status = SlotStatus.Exchange;
                 applicationDbContext.Update(viewResult);
-                await applicationDbContext.SaveChangesAsync();
             }
+            await applicationDbContext.SaveChangesAsync();
             var slot = await applicationDbContext.LotterySlots.Where(x => x.DisplayId.ToString() == slotId).FirstOrDefaultAsync();
             if (slot == null)
             {
