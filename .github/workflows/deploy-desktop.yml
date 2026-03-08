@@ -1,20 +1,23 @@
 name: Deploy Desktop App
 
 on:
-  workflow_run:
-    workflows: ["Deploy to Release Server"]
-    types:
-      - completed
+  push:
+    branches:
+      - release
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-and-release:
     runs-on: windows-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
