@@ -17,44 +17,55 @@ namespace Micon.LotterySystem.Services
     {
         return Document.Create(container =>
         {
-            container.Page(page =>
+            // 1ページあたりのチケット数（2列 x 3行 = 6枚）
+            const int ticketsPerPage = 6;
+            const int columns = 2;
+            const int rows = 3;
+
+            // チケットをページごとに分割
+            for (int pageStart = 0; pageStart < tickets.Count; pageStart += ticketsPerPage)
             {
-                page.Size(PageSizes.A4);
-                page.Margin(20);
-                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Noto Sans JP").Medium());
+                var pageTickets = tickets.Skip(pageStart).Take(ticketsPerPage).ToList();
 
-                page.Content().Table(table =>
+                container.Page(page =>
                 {
-                    table.ColumnsDefinition(columns =>
-                    {
-                        columns.RelativeColumn();
-                        columns.RelativeColumn();
-                    });
+                    page.Size(PageSizes.A4);
+                    page.Margin(20);
+                    page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Noto Sans JP").Medium());
 
-                    // チケットを2列に配置
-                    for (int i = 0; i < tickets.Count; i += 2)
+                    page.Content().Table(table =>
                     {
-                        // 左列のチケット
-                        table.Cell().Border(1).Padding(8).Height(150).Column(ticketCol =>
+                        table.ColumnsDefinition(columns =>
                         {
-                            RenderTicket(ticketCol, tickets[i]);
+                            columns.RelativeColumn();
+                            columns.RelativeColumn();
                         });
 
-                        // 右列のチケット（存在する場合）
-                        if (i + 1 < tickets.Count)
+                        // チケットを2列×3行で配置
+                        for (int i = 0; i < pageTickets.Count; i += columns)
                         {
-                            table.Cell().Border(1).Padding(8).Height(150).Column(ticketCol =>
+                            // 左列のチケット
+                            table.Cell().Border(1).Padding(8).Column(ticketCol =>
                             {
-                                RenderTicket(ticketCol, tickets[i + 1]);
+                                RenderTicket(ticketCol, pageTickets[i]);
                             });
+
+                            // 右列のチケット（存在する場合）
+                            if (i + 1 < pageTickets.Count)
+                            {
+                                table.Cell().Border(1).Padding(8).Column(ticketCol =>
+                                {
+                                    RenderTicket(ticketCol, pageTickets[i + 1]);
+                                });
+                            }
+                            else
+                            {
+                                table.Cell(); // 空のセル
+                            }
                         }
-                        else
-                        {
-                            table.Cell(); // 空のセル
-                        }
-                    }
+                    });
                 });
-            });
+            }
         }).GeneratePdf();
     }
 

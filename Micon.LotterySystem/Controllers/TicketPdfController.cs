@@ -115,9 +115,13 @@ public class TicketPdfController : ControllerBase
 
             baseUrl = $"{scheme}://{host}{portString}/ticket/";
         }
-        else if (!baseUrl.EndsWith("/"))
+        else
         {
-            baseUrl += "/";
+            if (!baseUrl.EndsWith("/"))
+            {
+                baseUrl += "/";
+            }
+            baseUrl += "ticket/";
         }
 
         var ticketInfo = tickets.Select(t => new TicketInfo
