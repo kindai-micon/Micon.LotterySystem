@@ -49,14 +49,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
+          set +e
           prefix="${{ steps.get_version.outputs.VERSION_PREFIX }}"
-          tags=$(gh api repos/${{ github.repository }}/tags --paginate 100 2>/dev/null | jq -r '.[].name' 2>/dev/null || echo "")
-          latest=$(echo "$tags" | grep "^desktop-v$prefix\." | sed "s/desktop-v$prefix\.//" | sort -n | tail -1)
-          if [ -n "$latest" ]; then
+          tags=$(gh api repos/${{ github.repository }}/tags --paginate 100 | jq -r '.[].name' || echo "")
+          latest=$(echo "$tags" | grep "^desktop-v$prefix\." | sed "s/desktop-v$prefix\.//" | sort -n | tail -1 || echo "")
+          if [ -n "$latest" ] && [ "$latest" -eq "$latest" ] 2>/dev/null; then
             nextPatch=$((latest + 1))
           else
             nextPatch=0
           fi
+          echo "PATCH=$nextPatch"
+          echo "FULL_VERSION=$prefix.$nextPatch"
           echo "PATCH=$nextPatch" >> $GITHUB_OUTPUT
           echo "FULL_VERSION=$prefix.$nextPatch" >> $GITHUB_OUTPUT
 
