@@ -16,7 +16,7 @@
         });
 
         if (response.ok) {
-            const data: bool = await response.json();
+            const data: boolean = await response.json();
             console.log(data);
             if (data) {
                 await goto("/login");

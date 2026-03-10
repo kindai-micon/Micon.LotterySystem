@@ -69,7 +69,7 @@
     }
 
 
-    async function fetchLotteryData(): Promise<LotterySlots[]> {
+    async function fetchLotteryData(): Promise<void> {
         const slotRes = await fetch('/api/LotterySlot/List/'+currentGroupId);
         const newslots: LotterySlots[] = await slotRes.json();
         loading = true;
@@ -156,7 +156,7 @@
             console.error("SignalR connection setup error:", err);
             connectionReady = false;
         }
-        slots = await fetchLotteryData();
+        await fetchLotteryData();
         loading = false;
     });
     onDestroy(() => {

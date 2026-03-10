@@ -2,10 +2,10 @@
     import Menu from "../components/menu.svelte";
     import { page } from '$app/stores';
     import { goto } from "$app/navigation";
-    import { user } from "../store/UserStore.ts";
-    import { loadUser } from "../store/UserStore.ts";
+    import { user } from "../store/UserStore";
+    import { loadUser } from "../store/UserStore";
     import { onMount } from 'svelte';
-    import type { User } from '../stores/UsetStore.ts';
+    import type { User } from '../store/UserStore';
     let { children } = $props();
     let currentUser: User | null = null;
 

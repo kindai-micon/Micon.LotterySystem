@@ -1,4 +1,3 @@
-﻿﻿
 <script lang="ts">
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
@@ -190,18 +189,10 @@
         <label>締切</label>
         <input type="datetime-local" class="width-max"
                bind:value={newSlot.deadLine}
-               disabled={noDeadline}
-               oninput={(e) => newSlot.deadLine = e.target.value} />
+               disabled={noDeadline} />
         <label class="checkbox-label">
             <input type="checkbox"
-                   bind:checked={noDeadline}
-                   onchange={() => {
-            if (slot.noDeadline) {
-            slot.deadLine = "";
-            } else {
-            slot.deadLine = toDateTimeLocalFormat(new Date().toISOString());
-            }
-            }} />
+                   bind:checked={noDeadline} />
             締切なし
         </label>
     </div>
@@ -230,8 +221,7 @@
         <label>締切</label>
         <input class="width-max " type="datetime-local"
                bind:value={slot.deadLine}
-               disabled={slot.noDeadline}
-               oninput={(e) => slot.deadLine = e.target.value} />
+               disabled={slot.noDeadline} />
         <label class="checkbox-label">
             <input type="checkbox"
                    bind:checked={slot.noDeadline}
@@ -246,8 +236,8 @@
         </label>
     </div>
     <div class="slot-actions">
-        <button class="btn" onclick={() => updateSlot(slot, slot.slotId)}>保存</button>
-        <button class="btn" onclick={() => editing[slot.slotId] = false}>キャンセル</button>
+        <button class="btn" onclick={() => updateSlot(slot, slot.slotId!)}>保存</button>
+        <button class="btn" onclick={() => editing[slot.slotId!] = false}>キャンセル</button>
     </div>
     {:else}
     <p><strong>{slot.name}</strong></p>
@@ -255,12 +245,12 @@
     <p>枠数: {slot.numberOfFrames}</p>
     <p>締切: {slot.deadLine ? new Date(slot.deadLine).toLocaleString() : '未設定'}</p>
     <div class="slot-actions">
-        <button class="btn" onclick={() => editing[slot.slotId] = true}>編集</button>
+        <button class="btn" onclick={() => editing[slot.slotId!] = true}>編集</button>
         {#if index > 0}
-        <button class="btn" onclick={() => moveSlot(slot.slotId, index - 1)}>↑ 上へ</button>
+        <button class="btn" onclick={() => moveSlot(slot.slotId!, index - 1)}>↑ 上へ</button>
         {/if}
         {#if index < slots.length - 1}
-        <button class="btn" onclick={() => moveSlot(slot.slotId, index + 1)}>↓ 下へ</button>
+        <button class="btn" onclick={() => moveSlot(slot.slotId!, index + 1)}>↓ 下へ</button>
         {/if}
     </div>
     {/if}

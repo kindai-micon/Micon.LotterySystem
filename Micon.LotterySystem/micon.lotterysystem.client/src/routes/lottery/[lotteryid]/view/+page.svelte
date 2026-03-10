@@ -7,13 +7,17 @@
     let connection = null;
     let connectionReady = false;
     let prizeLevel = "";
+    /** @type {string[]} */
     let resultNumbers = [];
+    /** @type {string[][]} */
     let exchangedNumbers = [];
     let spinning = false;
+    /** @type {string[][]} */
     let displayedNumbers = [];
     let visible = false;
 
     const digitCount = 4;
+    /** @type {{idx: number, i: number, interval: ReturnType<typeof setInterval>}[]} */
     let intervals = [];
     const lotteryId = $page.params.lotteryid;
     let prevGroupId = lotteryId;
@@ -25,6 +29,7 @@
         prizeLevel = data.name;
 
         const frameCount = data.numberOfFrames;
+        /** @type {{status: number, number: number}[]} */
         const allTickets = data.tickets || [];
 
         let i1 = 0;
@@ -90,6 +95,9 @@
         spinning = false;
     };
 
+    /**
+     * @param {string} newGroupId
+     */
     async function handleGroupChange(newGroupId) {
         console.log(`URL changed: new groupId = ${newGroupId}, previous = ${prevGroupId}`);
         prevGroupId = newGroupId;
@@ -107,11 +115,13 @@
             } else {
                 console.log("Connection not ready, waiting...");
                 // 接続が確立していない場合は、接続状態が変わるのを待つ
-                connection.onreconnected = async () => {
-                    await connection.invoke("RemoveLotteryGroup", newGroupId);
-                    await connection.invoke("SetLotteryGroup", newGroupId);
-                    await fetchWinningModel();
-                };
+                connection?.onreconnected(async () => {
+                    if (connection) {
+                        await connection.invoke("RemoveLotteryGroup", newGroupId);
+                        await connection.invoke("SetLotteryGroup", newGroupId);
+                        await fetchWinningModel();
+                    }
+                });
             }
         } catch (err) {
             console.error("Error during group change:", err);
@@ -174,7 +184,7 @@
         connection.start().then(() => {
             console.log("SignalR connected");
             connectionReady = true;
-            return connection.invoke("SetLotteryGroup", lotteryId)
+            return connection?.invoke("SetLotteryGroup", lotteryId)
                 .then(() => console.log("SetLotteryGroup invoked"))
                 .catch(err => console.error("SetLotteryGroup error:", err));
         }).catch(err => console.error("SignalR connection error:", err));

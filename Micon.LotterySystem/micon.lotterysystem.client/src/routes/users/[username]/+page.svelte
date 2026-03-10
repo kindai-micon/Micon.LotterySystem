@@ -2,7 +2,7 @@
     import { page } from '$app/stores';
     import { onMount } from 'svelte';
     import { get } from 'svelte/store';
-    import type { SendUser } from '$lib/models/user';
+    import type { SendUser, SendRole } from '$lib/models/user';
 
     let username = '';
     let user: SendUser | null = null;
@@ -32,7 +32,7 @@
             if (!rolesRes.ok) throw new Error(`ロール一覧取得失敗: ${rolesRes.status}`);
             availableRoles = await rolesRes.json();
         } catch (e) {
-            error = e.message;
+            if (e instanceof Error) error = e.message;
         } finally {
             loading = false;
         }

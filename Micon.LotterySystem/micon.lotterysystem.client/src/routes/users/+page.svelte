@@ -11,7 +11,7 @@
     let newPassword = '';
     let newEmail = '';
     let registerError: string | null = null;
-    let errorMessages = [];
+    let errorMessages: string[] = [];
 
     onMount(loadUsers);
 
@@ -23,7 +23,7 @@
             if (!res.ok) throw new Error(`Error ${res.status}`);
             users = await res.json();
         } catch (e) {
-            error = e.message;
+            if (e instanceof Error) error = e.message;
         } finally {
             loading = false;
         }
