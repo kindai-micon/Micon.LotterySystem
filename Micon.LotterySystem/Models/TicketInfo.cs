@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace Micon.LotterySystem.Models
 {
@@ -6,19 +7,17 @@ namespace Micon.LotterySystem.Models
     {
         public string Name { get; set; } = "抽選券";
         public string Description { get; set; } = "2025年度文化会新入生歓迎会";
-        public string Warning { get; set; } = "当日のみ有効 本券は汚したり破らないよう大切に保管してください";
+        // 新規追加（DB保存対象）
+        public string TicketLabel { get; set; } = "抽選券";
+        public string? Warning { get; set; }
+        public string? FooterText { get; set; }
 
-        // ↓ 以下はDBには保存しないプロパティ
+        // ヘルパー（改行区切り文字列として扱う - NotMapped）
         [NotMapped]
-        public int TicketNumber { get; set; }
-
-        [NotMapped]
-        public Guid Guid { get; set; }
-
-        [NotMapped]
-        public const string BaseUrl = $"https://lottery.kindai-micon.culb/ticket/";
-
-        [NotMapped]
-        public string Url { get; set; }
+        public string WarningText
+        {
+            get => Warning ?? "";
+            set => Warning = value;
+        }
     }
 }
