@@ -22,7 +22,7 @@
     let connection: HubConnection | null = null;
     let connectionReady = false;
 
-	let notifications = localStorage.getItem('notifications') ? JSON.parse(localStorage.getItem("notifications")) : [];
+	let notifications: string[] = localStorage.getItem('notifications') ? JSON.parse(localStorage.getItem("notifications") as string) : [];
 	$: notification = currentTicketId ? notifications.includes(currentTicketId) : false;
 	
 	if ('serviceWorker' in navigator) {
@@ -31,7 +31,7 @@
 			return reg.pushManager.getSubscription();
 		}).then(sub => {
 			if(!sub && notifications.includes(currentTicketId)) {
-				notifications = notifications.filter(v => v !== currentTicketId);
+				notifications = notifications.filter((v: string) => v !== currentTicketId);
 				localStorage.setItem('notifications',JSON.stringify(notifications));
 			}
 		});
@@ -60,13 +60,13 @@
                 }
             } else {
                 console.log("Connection not ready, waiting...");
-                connection.onreconnected = async () => {
-                    if (lotteryGroupId) {
+                connection?.onreconnected(async () => {
+                    if (lotteryGroupId && connection) {
                         await connection.invoke("RemoveLotteryGroup", lotteryGroupId);
                         await connection.invoke("SetLotteryGroup", lotteryGroupId);
                         await Load();
                     }
-                };
+                });
             }
         } catch (err) {
             console.error("Error during ticket change:", err);
@@ -110,13 +110,13 @@
                 loaded = true;
             });
 
-            connection.onreconnected = async (connectionId: string) => {
+            connection.onreconnected(async (connectionId?: string) => {
                 console.log("Reconnected with ID:", connectionId);
-                if (lotteryGroupId) {
+                if (lotteryGroupId && connection) {
                     await connection.invoke("SetLotteryGroup", lotteryGroupId);
                     await Load();
                 }
-            };
+            });
 
             await connection.start();
             console.log("SignalR connected");
@@ -155,7 +155,7 @@
                 lotteryGroupId = data.lotteryGroupId;
 
                 // 既に接続している場合は新しいグループに参加
-                if (connection && connection.state === "Connected") {
+                if (connection && connection.state === HubConnectionState.Connected) {
                     try {
                         await connection.invoke("SetLotteryGroup", lotteryGroupId);
                         console.log("Joined lottery group:", lotteryGroupId);

@@ -27,8 +27,8 @@
 		scannedGuid = null;
 		ticketNumber = null;
 		ticketStatus = null;
-		merchandise = null;
-		slotName = null;
+		merchandise = "";
+		slotName = "";
 		showExchangeButton = false;
 		isWinner = false; // スキャン開始時にリセット
 		isExchanged = false; // スキャン開始時にリセット

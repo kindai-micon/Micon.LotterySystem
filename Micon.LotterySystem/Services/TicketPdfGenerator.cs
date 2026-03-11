@@ -2,7 +2,7 @@
 using ZXing.Common;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
-using Micon.LotterySystem.Models;
+using Micon.LotterySystem.Models.API;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Formats.Png;
@@ -13,7 +13,7 @@ namespace Micon.LotterySystem.Services
 {
     public class TicketPdfGenerator : ITicketPdfGenerator
     {
-    public byte[] GenerateTicketsPdf(List<TicketInfo> tickets)
+    public byte[] GenerateTicketsPdf(List<TicketPrintData> tickets)
     {
         return Document.Create(container =>
         {
@@ -69,10 +69,10 @@ namespace Micon.LotterySystem.Services
         }).GeneratePdf();
     }
 
-    private void RenderTicket(ColumnDescriptor ticketCol, TicketInfo ticket)
+    private void RenderTicket(ColumnDescriptor ticketCol, TicketPrintData ticket)
     {
         // タイトル
-        ticketCol.Item().AlignCenter().Text(ticket.Name).FontSize(16).FontFamily("Noto Sans JP").Bold();
+        ticketCol.Item().AlignCenter().Text(ticket.TicketLabel).FontSize(16).FontFamily("Noto Sans JP").Bold();
 
         // 中段：QR + 番号
         ticketCol.Item().Row(row =>
@@ -88,11 +88,40 @@ namespace Micon.LotterySystem.Services
         // 説明と注意
         ticketCol.Item().PaddingTop(5).Column(bottom =>
         {
-            bottom.Item().Text(ticket.Description).FontSize(9);
-            bottom.Item().Text(ticket.Warning).FontSize(8);
+            // 説明文（改行対応）
+            if (!string.IsNullOrEmpty(ticket.Description))
+            {
+                var descLines = ticket.Description.Split('\n');
+                foreach (var descLine in descLines)
+                {
+                    bottom.Item().Text(descLine).FontSize(9);
+                }
+            }
 
-            // Powered by 表記
-            bottom.Item().PaddingTop(10).AlignRight().Text("Powered by Micon club").FontSize(6).Italic().FontColor(Colors.Grey.Medium);
+            // 説明と注意書きの間にスペース
+            if (!string.IsNullOrEmpty(ticket.Description) && !string.IsNullOrEmpty(ticket.WarningText))
+            {
+                bottom.Item().PaddingTop(3);
+            }
+
+            // 注意書き（改行対応）
+            if (!string.IsNullOrEmpty(ticket.WarningText))
+            {
+                var warningLines = ticket.WarningText.Split('\n');
+                foreach (var line in warningLines)
+                {
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {
+                        bottom.Item().Text(line).FontSize(7);
+                    }
+                }
+            }
+
+            // フッターテキスト（カスタムまたはデフォルト）
+            var footerText = !string.IsNullOrEmpty(ticket.FooterText)
+                ? ticket.FooterText
+                : "Powered by Micon club";
+            bottom.Item().PaddingTop(10).AlignRight().Text(footerText).FontSize(6).Italic().FontColor(Colors.Grey.Medium);
         });
     }
 

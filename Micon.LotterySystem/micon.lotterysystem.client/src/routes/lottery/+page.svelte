@@ -1,4 +1,3 @@
-﻿﻿
 <script lang="ts">
     import { onMount } from 'svelte';
     type LotteryGroup = {
@@ -20,7 +19,7 @@
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             lottery = await res.json();
             error = null;
-        } catch (err) {
+        } catch (err: any) {
             error = `抽選会一覧の取得に失敗しました: ${err.message}`;
         } finally {
             loading = false;
@@ -46,7 +45,7 @@
 
             newName = '';
             await loadList();
-        } catch (err) {
+        } catch (err: any) {
             createError = `作成に失敗しました: ${err.message}`;
         } finally {
             creating = false;
