@@ -64,7 +64,7 @@
             filteredTickets = tickets;
             countStatuses();
             error = null;
-        } catch (e) {
+        } catch (e: any) {
             error = `チケット一覧取得に失敗しました: ${e.message}`;
         } finally {
             loading = false;

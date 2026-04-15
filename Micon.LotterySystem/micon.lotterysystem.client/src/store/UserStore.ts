@@ -1,16 +1,8 @@
-﻿import { writable } from 'svelte/store';
-interface Authority {
-    name: string;
-}
-interface Role {
-    name: string;
-    authorities: Authority[];
-}
+import { writable } from 'svelte/store';
+import type { SendUser } from '$lib/models/user';
 
-interface User {
-    userName: string;
-    roles: Role[];
-}
+// SendUserをエクスポートして他のファイルから使えるようにする
+export type User = SendUser;
 
 // 初期値（未ログイン状態）
 const initialUser: User | null = null;
@@ -20,8 +12,7 @@ export async function loadUser(): Promise<void> {
     try {
         const res = await fetch('/api/user/MyInfo');
         if (res.ok) {
-            const userData = await res.json();
-            console.log(userData);
+            const userData: User = await res.json();
             user.set(userData);
         } else {
             console.error('ユーザー情報の取得に失敗: ステータス', res.status);

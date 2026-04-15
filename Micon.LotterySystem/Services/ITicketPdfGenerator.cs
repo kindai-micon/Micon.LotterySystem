@@ -1,9 +1,9 @@
-using Micon.LotterySystem.Models;
+using Micon.LotterySystem.Models.API;
 
 namespace Micon.LotterySystem.Services
 {
     public interface ITicketPdfGenerator
     {
-        byte[] GenerateTicketsPdf(List<TicketInfo> tickets);
+        byte[] GenerateTicketsPdf(List<TicketPrintData> tickets);
     }
 }
