@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -151,6 +152,32 @@ public partial class ReceiptViewModel : ViewModelBase
                 ? LotteryGroup.Name
                 : result.LotteryGroupName;
 
+            var ticketLabel = string.IsNullOrWhiteSpace(result.TicketLabel)
+                ? "抽選券"
+                : result.TicketLabel;
+
+            var description = result.Description ?? string.Empty;
+
+            var footerText = string.IsNullOrWhiteSpace(result.FooterText)
+                ? _receiptLayoutSettings.FooterText
+                : result.FooterText;
+
+            // WarningTextを改行で分割（空行をフィルタ）
+            var warningLines = new List<string>();
+            if (!string.IsNullOrWhiteSpace(result.WarningText))
+            {
+                warningLines = result.WarningText
+                    .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .ToList();
+            }
+            // APIのWarningTextが空の場合は設定値を使用
+            if (warningLines.Count == 0)
+            {
+                warningLines = _receiptLayoutSettings.WarningLines.ToList();
+            }
+
             PrintTotal = result.Tickets.Count;
 
             foreach (var ticket in result.Tickets)
@@ -203,8 +230,10 @@ public partial class ReceiptViewModel : ViewModelBase
                     QrCodePngBytes = qrCodeImage,
                     ActivateOnIssue = ActivateOnIssue,
                     PrinterName = _printerSettings.PrinterName,
-                    WarningLines = _receiptLayoutSettings.WarningLines,
-                    FooterText = _receiptLayoutSettings.FooterText
+                    TicketLabel = ticketLabel,
+                    Description = description,
+                    WarningLines = warningLines,
+                    FooterText = footerText
                 };
 
                 var printResult = await _receiptPrinterService.PrintAsync(printJob);
