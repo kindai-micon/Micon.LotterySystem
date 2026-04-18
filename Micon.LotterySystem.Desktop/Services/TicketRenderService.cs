@@ -69,8 +69,6 @@ public class TicketRenderService : ITicketRenderService
                 ? "抽選券"
                 : printJob.TicketLabel.Trim();
 
-            const string titleLine2 = "抽選券";
-
             var descriptionText = string.IsNullOrWhiteSpace(printJob.Description)
                 ? string.Empty
                 : printJob.Description.Trim();
@@ -84,13 +82,12 @@ public class TicketRenderService : ITicketRenderService
             var spacingLarge = 28;
 
             var titleLine1Height = MeasureTextHeight(titlePaint);
-            var titleLine2Height = MeasureTextHeight(titlePaint);
             var numberHeight = MeasureTextHeight(numberPaint);
             var bodyHeight = MeasureTextHeight(bodyPaint);
             var footerHeight = MeasureTextHeight(footerPaint);
             var qrSize = _layoutSettings.QrSizePx;
 
-            var labelHeight = MeasureTextTitle(titlePaint, ticketLabel);
+            var labelHeight = MeasureTextHeight(titlePaint);
             var descHeight = string.IsNullOrWhiteSpace(descriptionText)
                 ? 0
                 : MeasureTextHeight(titlePaint);
@@ -98,8 +95,6 @@ public class TicketRenderService : ITicketRenderService
             var totalHeight =
                 topMargin +
                 titleLine1Height +
-                spacingSmall +
-                titleLine2Height +
                 spacingSmall +
                 labelHeight +
                 (string.IsNullOrWhiteSpace(descriptionText) ? 0 : spacingSmall + descHeight) +
@@ -121,8 +116,6 @@ public class TicketRenderService : ITicketRenderService
             var y = topMargin;
 
             y = DrawCenteredText(canvas, titleLine1, titlePaint, y);
-            y += spacingSmall;
-            y = DrawCenteredText(canvas, titleLine2, titlePaint, y);
             y += spacingSmall;
             y = DrawCenteredText(canvas, ticketLabel, titlePaint, y);
 
@@ -230,13 +223,6 @@ public class TicketRenderService : ITicketRenderService
 
     private static int MeasureTextHeight(SKPaint paint)
     {
-        var metrics = paint.FontMetrics;
-        return (int)Math.Ceiling(metrics.Descent - metrics.Ascent);
-    }
-
-    private static int MeasureTextTitle(SKPaint paint, string text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return 0;
         var metrics = paint.FontMetrics;
         return (int)Math.Ceiling(metrics.Descent - metrics.Ascent);
     }
