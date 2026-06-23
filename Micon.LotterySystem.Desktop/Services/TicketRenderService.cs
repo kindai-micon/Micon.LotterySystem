@@ -65,7 +65,14 @@ public class TicketRenderService : ITicketRenderService
                 ? "抽選会"
                 : printJob.LotteryGroupName.Trim();
 
-            const string titleLine2 = "抽選券";
+            var ticketLabel = string.IsNullOrWhiteSpace(printJob.TicketLabel)
+                ? "抽選券"
+                : printJob.TicketLabel.Trim();
+
+            var descriptionText = string.IsNullOrWhiteSpace(printJob.Description)
+                ? string.Empty
+                : printJob.Description.Trim();
+
             var numberText = $"No.{printJob.TicketNumber}";
 
             var topMargin = _layoutSettings.MarginTop;
@@ -75,17 +82,22 @@ public class TicketRenderService : ITicketRenderService
             var spacingLarge = 28;
 
             var titleLine1Height = MeasureTextHeight(titlePaint);
-            var titleLine2Height = MeasureTextHeight(titlePaint);
             var numberHeight = MeasureTextHeight(numberPaint);
             var bodyHeight = MeasureTextHeight(bodyPaint);
             var footerHeight = MeasureTextHeight(footerPaint);
             var qrSize = _layoutSettings.QrSizePx;
 
+            var labelHeight = MeasureTextHeight(titlePaint);
+            var descHeight = string.IsNullOrWhiteSpace(descriptionText)
+                ? 0
+                : MeasureTextHeight(titlePaint);
+
             var totalHeight =
                 topMargin +
                 titleLine1Height +
                 spacingSmall +
-                titleLine2Height +
+                labelHeight +
+                (string.IsNullOrWhiteSpace(descriptionText) ? 0 : spacingSmall + descHeight) +
                 spacingMedium +
                 10 + // 区切り線領域
                 spacingMedium +
@@ -105,7 +117,13 @@ public class TicketRenderService : ITicketRenderService
 
             y = DrawCenteredText(canvas, titleLine1, titlePaint, y);
             y += spacingSmall;
-            y = DrawCenteredText(canvas, titleLine2, titlePaint, y);
+            y = DrawCenteredText(canvas, ticketLabel, titlePaint, y);
+
+            if (!string.IsNullOrWhiteSpace(descriptionText))
+            {
+                y += spacingSmall;
+                y = DrawCenteredText(canvas, descriptionText, titlePaint, y);
+            }
 
             y += spacingMedium;
             canvas.DrawLine(
