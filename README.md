@@ -1,49 +1,49 @@
-# QRQueue
+# Micon Lottery System
 
 近畿大学マイコン部が作成した抽選システム
 
 ## 構成
 
-- **QRQueue** - ASP.NET Core Web API（バックエンド）
-- **QRQueue.Desktop** - Avaloniaデスクトップアプリ（レシート印刷用）
-- **QRQueue.Aspire** - .NET Aspire開発環境オーケストレーション
-- **qrqueue.client** - Svelteフロントエンド
+- **Micon.LotterySystem** - ASP.NET Core Web API（バックエンド）
+- **Micon.LotterySystem.Desktop** - Avaloniaデスクトップアプリ（レシート印刷用）
+- **Micon.LotterySystem.Aspire** - .NET Aspire開発環境オーケストレーション
+- **micon.lotterysystem.client** - Svelteフロントエンド
 
 ## ディレクトリ構造
 
 ```
-QRQueue/
+Micon.LotterySystem/
 ├── .github/
 │   └── workflows/
 │       ├── deploy.yml              # Webアプリデプロイ
 │       └── deploy-desktop.yml      # デスクトップアプリデプロイ
 ├── .deploy/
-│   └── qrqueue.service        # systemdサービス定義
-├── QRQueue/            # バックエンド
+│   └── miconlottery.service        # systemdサービス定義
+├── Micon.LotterySystem/            # バックエンド
 │   ├── Controllers/                # APIコントローラー
 │   ├── Models/                     # データモデル
 │   ├── Services/                   # ビジネスロジック
 │   ├── Hubs/                       # SignalRハブ
 │   ├── Migrations/                 # DBマイグレーション
-│   ├── qrqueue.client/ # フロントエンド (SvelteKit)
+│   ├── micon.lotterysystem.client/ # フロントエンド (SvelteKit)
 │   └── appsettings.json
-├── QRQueue.Desktop/    # デスクトップアプリ
+├── Micon.LotterySystem.Desktop/    # デスクトップアプリ
 │   ├── Views/                      # Avaloniaビュー
 │   ├── ViewModels/                 # MVVM ViewModel
 │   ├── Models/                     # データモデル
 │   ├── Services/                   # プリンターサービス等
 │   ├── Setting/                    # 設定クラス
 │   └── appsettings.json
-├── QRQueue.Aspire/     # 開発環境オーケストレーション
-│   ├── QRQueue.Aspire.AppHost/
-│   └── QRQueue.Aspire.ServiceDefaults/
-└── QRQueue.sln
+├── Micon.LotterySystem.Aspire/     # 開発環境オーケストレーション
+│   ├── Micon.LotterySystem.Aspire.AppHost/
+│   └── Micon.LotterySystem.Aspire.ServiceDefaults/
+└── Micon.LotterySystem.sln
 ```
 
 ## 技術スタック
 
 ### バックエンド
-- .NET 10.0
+- .NET 9.0
 - ASP.NET Core
 - Entity Framework Core
 - PostgreSQL
@@ -53,11 +53,11 @@ QRQueue/
 - TypeScript
 
 ### デスクトップアプリ
-- .NET 10.0
+- .NET 9.0
 - Avalonia UI
 
 ### 開発環境（.NET Aspire）
-- .NET Aspire 9.5
+- .NET Aspire 9.0
 
 ## 開発環境
 
@@ -65,7 +65,7 @@ QRQueue/
 
 | ソフトウェア | バージョン | 備考 |
 |-------------|-----------|------|
-| [.NET SDK](https://dotnet.microsoft.com/download) | 10.0 | `dotnet --version`で確認 |
+| [.NET SDK](https://dotnet.microsoft.com/download) | 9.0 | `dotnet --version`で確認 |
 | [Node.js](https://nodejs.org/) | 20+ | `node --version`で確認（npm同梱） |
 | npm | 10+ | `npm --version`で確認 |
 | [Docker Desktop](https://www.docker.com/products/docker-desktop) | 最新 | Aspire用コンテナ実行環境 |
@@ -74,7 +74,7 @@ QRQueue/
 ### インストール確認
 
 ```bash
-dotnet --version    # 10.0.x
+dotnet --version    # 9.0.x
 node --version      # v20.x.x
 npm --version       # 10.x.x
 docker --version    # Docker version ...
@@ -85,22 +85,22 @@ git --version       # git version ...
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/kindai-micon/QRQueue.git
-cd QRQueue
+git clone https://github.com/kindai-micon/Micon.LotterySystem.git
+cd Micon.LotterySystem
 
 # .NETの依存関係を復元
 dotnet restore
 
 # フロントエンドの依存関係をインストール
-cd QRQueue/qrqueue.client
+cd Micon.LotterySystem/micon.lotterysystem.client
 npm install
 cd ../..
 
 # Aspire AppHostを実行（PostgreSQL含む）
-dotnet run --project QRQueue.Aspire/QRQueue.Aspire.AppHost
+dotnet run --project Micon.LotterySystem.Aspire/Micon.LotterySystem.Aspire.AppHost
 
 # デスクトップアプリも同時に起動する場合
-dotnet run --project QRQueue.Aspire/QRQueue.Aspire.AppHost -- --desktop
+dotnet run --project Micon.LotterySystem.Aspire/Micon.LotterySystem.Aspire.AppHost -- --desktop
 ```
 
 Aspireダッシュボードが自動的に開き、各サービスの状態を確認できます。
@@ -118,14 +118,14 @@ Aspireダッシュボードが自動的に開き、各サービスの状態を�
 
 ```bash
 # デスクトップアプリを実行
-dotnet run --project QRQueue.Desktop
+dotnet run --project Micon.LotterySystem.Desktop
 ```
 
 ## 設定ファイル
 
 ### Webアプリ（appsettings.json）
 
-`QRQueue/appsettings.json`:
+`Micon.LotterySystem/appsettings.json`:
 
 ```json
 {
@@ -134,8 +134,8 @@ dotnet run --project QRQueue.Desktop
   },
   "JwtSettings": {
     "SecretKey": "YourSuperSecretKeyForJwtTokenGeneration_Minimum32Characters!",
-    "Issuer": "QRQueue",
-    "Audience": "QRQueue.Clients",
+    "Issuer": "Micon.LotterySystem",
+    "Audience": "Micon.LotterySystem.Clients",
     "AccessTokenExpirationMinutes": 15,
     "RefreshTokenExpirationDays": 30
   },
@@ -159,7 +159,7 @@ dotnet run --project QRQueue.Desktop
 
 ### デスクトップアプリ（appsettings.json）
 
-`QRQueue.Desktop/appsettings.json`:
+`Micon.LotterySystem.Desktop/appsettings.json`:
 
 ```json
 {
@@ -187,7 +187,7 @@ dotnet run --project QRQueue.Desktop
       "本券は大切に保管してください",
       "抽選時までお持ちください"
     ],
-    "FooterText": "QRQueue"
+    "FooterText": "Micon Lottery System"
   }
 }
 ```
@@ -219,10 +219,10 @@ GRANT ALL PRIVILEGES ON DATABASE my_db TO postgres;
 
 ```bash
 # マイグレーションの作成
-dotnet ef migrations add InitialCreate --project QRQueue
+dotnet ef migrations add InitialCreate --project Micon.LotterySystem
 
 # データベースに適用
-dotnet ef database update --project QRQueue
+dotnet ef database update --project Micon.LotterySystem
 ```
 
 ## 本番環境
@@ -240,7 +240,7 @@ flowchart LR
 - **アプリケーションサーバー**: ASP.NET Core (systemd)
 - **データベース**: PostgreSQL
 - **SSL証明書**: Let's Encrypt (Certbot)
-- **デプロイ先**: `/var/www/qrqueue/publish`
+- **デプロイ先**: `/var/www/miconlottery/publish`
 - **URL**: https://lottery.kindai-micon.club
 
 ### デプロイフロー
@@ -253,16 +253,16 @@ flowchart LR
 
 #### systemdサービス定義
 
-`.deploy/qrqueue.service`:
+`.deploy/miconlottery.service`:
 
 ```ini
 [Unit]
-Description=QRQueue
+Description=Micon Lottery System
 After=network.target
 
 [Service]
-WorkingDirectory=/var/www/qrqueue/publish
-ExecStart=/usr/bin/dotnet /var/www/qrqueue/publish/QRQueue.dll
+WorkingDirectory=/var/www/miconlottery/publish
+ExecStart=/usr/bin/dotnet /var/www/miconlottery/publish/Micon.LotterySystem.dll
 Restart=always
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=ASPNETCORE_URLS=http://*:5000
@@ -275,9 +275,9 @@ WantedBy=multi-user.target
 
 ```bash
 # アプリケーションサービス
-sudo systemctl status qrqueue    # 状態確認
-sudo systemctl restart qrqueue   # 再起動
-sudo journalctl -u qrqueue -f    # ログ確認
+sudo systemctl status miconlottery    # 状態確認
+sudo systemctl restart miconlottery   # 再起動
+sudo journalctl -u miconlottery -f    # ログ確認
 
 # Nginx
 sudo systemctl status nginx           # 状態確認

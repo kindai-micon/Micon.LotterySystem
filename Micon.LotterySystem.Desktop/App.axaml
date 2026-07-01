@@ -1,0 +1,25 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Micon.LotterySystem.Desktop.ViewModels"
+             xmlns:v="using:Micon.LotterySystem.Desktop.Views"
+             x:Class="Micon.LotterySystem.Desktop.App"
+             RequestedThemeVariant="Default">
+
+    <Application.DataTemplates>
+        <!-- ViewModel → View のマッピング -->
+        <DataTemplate DataType="{x:Type vm:LoginViewModel}">
+            <v:LoginView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MainViewModel}">
+            <v:MainView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ReceiptViewModel}">
+            <v:ReceiptView/>
+        </DataTemplate>
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+    </Application.Styles>
+</Application>

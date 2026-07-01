@@ -1,0 +1,6 @@
+@Micon.LotterySystem_HostAddress = http://localhost:5026
+
+GET {{Micon.LotterySystem_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
