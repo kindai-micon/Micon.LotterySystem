@@ -1,0 +1,13 @@
+[Unit]
+Description=QRQueue
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/qrqueue/publish
+ExecStart=/usr/bin/dotnet /var/www/qrqueue/publish/QRQueue.dll
+Restart=always
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://*:5000
+
+[Install]
+WantedBy=multi-user.target

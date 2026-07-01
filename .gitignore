@@ -362,7 +362,7 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-/Micon.LotterySystem/wwwroot/
+/QRQueue/wwwroot/
 
 # VAPID keys (auto-generated)
 vapid_keys.json
