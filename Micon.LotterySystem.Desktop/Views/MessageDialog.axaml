@@ -1,0 +1,57 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Micon.LotterySystem.Desktop.Views"
+        x:Class="Micon.LotterySystem.Desktop.Views.MessageDialog"
+        x:DataType="local:MessageDialog"
+        Title="警告"
+        Width="450"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- アイコンとタイトル -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="0,0,0,15">
+            <TextBlock Text="⚠" FontSize="32" Foreground="#F57C00"/>
+            <TextBlock Text="発行に失敗したチケットがあります" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- 失敗したチケット一覧 -->
+        <Border Grid.Row="1" Background="#FFF3E0" BorderBrush="#FFB74D" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="以下のチケットは正常に処理されませんでした:" FontSize="13" Margin="0,0,0,10"/>
+                <ItemsControl ItemsSource="{Binding FailedTickets}" MaxHeight="200">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:FailedTicketDisplay">
+                            <Border BorderBrush="#DDD" BorderThickness="1" CornerRadius="3" Padding="8" Margin="0,0,0,5">
+                                <StackPanel>
+                                    <TextBlock FontSize="13">
+                                        <Run Text="番号: " FontWeight="Bold"/>
+                                        <Run Text="{Binding Number}"/>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding Reason}" FontSize="12" Foreground="#666"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- 注意書き -->
+        <TextBlock Grid.Row="2" TextWrapping="Wrap" FontSize="12" Foreground="#666" Margin="0,0,0,15">
+            これらのチケットはサーバー上で「印刷中」状態のままです。管理者に連絡してください。
+        </TextBlock>
+
+        <!-- ボタン -->
+        <Button Grid.Row="2" Content="閉じる" HorizontalAlignment="Right" Padding="30,10"
+                Command="{Binding CloseDialogCommand}" IsDefault="True"/>
+    </Grid>
+
+</Window>

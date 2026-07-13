@@ -1,6 +1,0 @@
-@QRQueue_HostAddress = http://localhost:5026
-
-GET {{QRQueue_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

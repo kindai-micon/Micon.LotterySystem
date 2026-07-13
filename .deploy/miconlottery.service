@@ -1,0 +1,13 @@
+[Unit]
+Description=Micon Lottery System
+After=network.target
+
+[Service]
+WorkingDirectory=/var/www/miconlottery/publish
+ExecStart=/usr/bin/dotnet /var/www/miconlottery/publish/Micon.LotterySystem.dll
+Restart=always
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://*:5000
+
+[Install]
+WantedBy=multi-user.target
