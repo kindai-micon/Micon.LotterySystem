@@ -1,4 +1,5 @@
 ﻿using Micon.LotterySystem.Models;
+using Micon.LotterySystem.Models.API;
 using Micon.LotterySystem;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -124,13 +125,15 @@ public class TicketPdfController : ControllerBase
             baseUrl += "ticket/";
         }
 
-        var ticketInfo = tickets.Select(t => new TicketInfo
+        var ticketInfo = tickets.Select(t => new TicketPrintData
         {
-            TicketNumber = (int)t.Number,
-            Guid = t.DisplayId,
-            Name = lotteryGroup.Name + " 抽選券",
-            Description = lotteryGroup.Name,
-            Warning = "当日のみ有効 本券は汚したり破らないよう大切に保管してください",
+            TicketNumber = t.Number,
+            DisplayId = t.DisplayId,
+            LotteryGroupName = lotteryGroup.Name,
+            TicketLabel = lotteryGroup.TicketInfo?.TicketLabel ?? "抽選券",
+            Description = lotteryGroup.TicketInfo?.Description ?? lotteryGroup.Name,
+            WarningText = lotteryGroup.TicketInfo?.WarningText ?? "当日のみ有効\n本券は汚したり破らないよう大切に保管してください",
+            FooterText = lotteryGroup.TicketInfo?.FooterText,
             Url = baseUrl + t.DisplayId.ToString()
         }).ToList();
 

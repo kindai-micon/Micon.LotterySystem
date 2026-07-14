@@ -19,6 +19,10 @@ public class ReceiptPrintJob
 
     public string PrinterName { get; init; } = string.Empty;
 
+    public string TicketLabel { get; init; } = "抽選券";
+
+    public string Description { get; init; } = string.Empty;
+
     public IReadOnlyList<string> WarningLines { get; init; } = Array.Empty<string>();
 
     public string FooterText { get; init; } = string.Empty;

@@ -80,6 +80,11 @@
             <div class="desc">抽選券を発行できます</div>
         </a>
 
+        <a class="link-card" href="{lotteryId}/ticket-settings">
+            抽選券のデザイン編集
+            <div class="desc">チケット名・説明文・注意書きなどをカスタマイズ</div>
+        </a>
+
         <a class="link-card" href="{lotteryId}/tickets">
             抽選券一覧
             <div class="desc">発行済みの抽選券の一覧を確認できます</div>

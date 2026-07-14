@@ -75,6 +75,13 @@ namespace Micon.LotterySystem.Controllers
                     TicketStatus.PrintPublishing,
                     issuerName);
 
+                // TicketInfoを取得して印刷用情報を追加
+                var lotteryGroup = await _db.LotteryGroups
+                    .Include(g => g.TicketInfo)
+                    .FirstOrDefaultAsync(g => g.DisplayId == request.LotteryGroupId);
+
+                var ticketInfo = lotteryGroup?.TicketInfo;
+
                 var response = new
                 {
                     tickets = result.Tickets.Select(t => new
@@ -85,7 +92,12 @@ namespace Micon.LotterySystem.Controllers
                         status = t.Status.ToString(),
                         issuedAt = t.Created
                     }),
-                    lotteryGroupName = result.LotteryGroupName
+                    lotteryGroupName = result.LotteryGroupName,
+                    // チケット印刷用情報
+                    ticketLabel = ticketInfo?.TicketLabel ?? "抽選券",
+                    description = ticketInfo?.Description ?? result.LotteryGroupName,
+                    warningText = ticketInfo?.WarningText ?? "当日のみ有効\n本券は汚したり破らないよう大切に保管してください",
+                    footerText = ticketInfo?.FooterText
                 };
 
                 return Ok(response);

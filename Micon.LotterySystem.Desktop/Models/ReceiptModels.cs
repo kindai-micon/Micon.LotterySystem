@@ -30,6 +30,18 @@ public class IssueTicketsResponse
     [JsonPropertyName("lotteryGroupName")]
     public string? LotteryGroupName { get; set; }
 
+    [JsonPropertyName("ticketLabel")]
+    public string? TicketLabel { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("warningText")]
+    public string? WarningText { get; set; }
+
+    [JsonPropertyName("footerText")]
+    public string? FooterText { get; set; }
+
     [JsonPropertyName("error")]
     public string? Error { get; set; }
 }

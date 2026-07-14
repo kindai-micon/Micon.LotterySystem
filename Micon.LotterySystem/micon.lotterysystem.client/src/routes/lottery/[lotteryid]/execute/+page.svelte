@@ -113,13 +113,13 @@
                 console.log("ExchangeStop");
             });
 
-            hubConnection.onreconnected = async (connectionId: string) => {
+            hubConnection.onreconnected(async (connectionId?: string) => {
                 console.log("Reconnected with ID:", connectionId);
                 if (currentGroupId) {
                     await hubConnection.invoke("SetLotteryGroup", currentGroupId);
                     await Load();
                 }
-            };
+            });
 
             await hubConnection.start();
             console.log("SignalR connected");
@@ -384,35 +384,38 @@
     <p>枠数: {slot.numberOfFrames}</p>
     <p>締切: {slot.deadLine ?? "未設定"}</p>
 
-    {#if slot.slotId && getWinningModel(slot.slotId)}
-    {#if getWinningModel(slot.slotId).tickets.length > 0 && getWinningModel(slot.slotId).status >= 3}
-    <div>
-        <h4>チケット一覧</h4>
-        <div class="tickets-container">
-            {#each getWinningModel(slot.slotId).tickets as ticket}
-            <div class="ticket {getTicketStatusClass(ticket.status)}">
-                {ticket.number}
+    {#if slot.slotId}
+        {@const winningModel = getWinningModel(slot.slotId)}
+        {#if winningModel}
+            {#if winningModel.tickets.length > 0 && winningModel.status >= 3}
+            <div>
+                <h4>チケット一覧</h4>
+                <div class="tickets-container">
+                    {#each winningModel.tickets as ticket}
+                    <div class="ticket {getTicketStatusClass(ticket.status)}">
+                        {ticket.number}
+                    </div>
+                    {/each}
+                </div>
             </div>
-            {/each}
-        </div>
-    </div>
-    {/if}
+            {/if}
 
-    <div class="actions">
-        {#if [3].includes(getWinningModel(slot.slotId).status)}
-        <button class="fancy-button" onclick={async ()=>
-            await onStopExchange(slot.slotId)}>
-            引き換えを中止する
-        </button>
-        {/if}
+            <div class="actions">
+                {#if [3].includes(winningModel.status)}
+                <button class="fancy-button" onclick={async ()=>
+                    await onStopExchange(slot.slotId!)}>
+                    引き換えを中止する
+                </button>
+                {/if}
 
-        {#if getLotteryActionLabel(getWinningModel(slot.slotId).status)}
-        <button class="fancy-button" onclick={async ()=>
-            await onLotteryAction(slot.slotId, getWinningModel(slot.slotId).status)}>
-            {getLotteryActionLabel(getWinningModel(slot.slotId).status)}
-        </button>
+                {#if getLotteryActionLabel(winningModel.status)}
+                <button class="fancy-button" onclick={async ()=>
+                    await onLotteryAction(slot.slotId!, winningModel.status)}>
+                    {getLotteryActionLabel(winningModel.status)}
+                </button>
+                {/if}
+            </div>
         {/if}
-    </div>
     {/if}
 </div>
 {/each}
